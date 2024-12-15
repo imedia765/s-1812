@@ -167,12 +167,13 @@ export default function Support() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setSelectedTicket({
+                            const transformedTicket: Ticket = {
                               ...ticket,
                               createdAt: ticket.created_at,
                               requester: ticket.member?.full_name || 'Unknown',
                               responses: ticket.ticket_responses || []
-                            });
+                            };
+                            setSelectedTicket(transformedTicket);
                             setIsDialogOpen(true);
                           }}
                         >

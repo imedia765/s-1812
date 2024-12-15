@@ -20,4 +20,8 @@ export interface Ticket {
     full_name: string;
   } | null;
   ticket_responses?: TicketResponse[];
+  // Additional properties needed for the dialog
+  createdAt?: string;
+  requester?: string;
+  responses?: TicketResponse[];
 }
