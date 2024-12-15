@@ -167,7 +167,12 @@ export default function Support() {
                           variant="outline"
                           size="sm"
                           onClick={() => {
-                            setSelectedTicket(ticket);
+                            setSelectedTicket({
+                              ...ticket,
+                              createdAt: ticket.created_at,
+                              requester: ticket.member?.full_name || 'Unknown',
+                              responses: ticket.ticket_responses || []
+                            });
                             setIsDialogOpen(true);
                           }}
                         >
