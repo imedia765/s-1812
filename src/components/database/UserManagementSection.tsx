@@ -21,17 +21,55 @@ export function UserManagementSection() {
   const { data: users, refetch } = useQuery({
     queryKey: ['profiles'],
     queryFn: async () => {
-      const { data, error } = await supabase
+      // First, get all users from auth.users
+      const { data: { users: authUsers }, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        throw authError;
+      }
+
+      // Then get all profiles
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('*');
+
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      // Create profiles for any users that don't have them
+      const usersWithoutProfiles = authUsers.filter(authUser => 
+        !profiles?.some(profile => profile.id === authUser.id)
+      );
+
+      for (const user of usersWithoutProfiles) {
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            role: 'member'
+          });
+
+        if (insertError) {
+          console.error('Error creating profile:', insertError);
+        }
+      }
+
+      // Fetch the final list of profiles after any new insertions
+      const { data: finalProfiles, error: finalError } = await supabase
         .from('profiles')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching users:', error);
-        throw error;
+      if (finalError) {
+        console.error('Error fetching final profiles:', finalError);
+        throw finalError;
       }
 
-      return data as Profile[];
+      return finalProfiles as Profile[];
     },
   });
 
