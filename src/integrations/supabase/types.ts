@@ -285,6 +285,7 @@ export type Database = {
           created_at: string
           email: string | null
           id: string
+          role: Database["public"]["Enums"]["user_role"] | null
           updated_at: string
           user_id: string | null
         }
@@ -292,6 +293,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string
           user_id?: string | null
         }
@@ -299,6 +301,7 @@ export type Database = {
           created_at?: string
           email?: string | null
           id?: string
+          role?: Database["public"]["Enums"]["user_role"] | null
           updated_at?: string
           user_id?: string | null
         }
@@ -443,7 +446,7 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      user_role: "member" | "collector" | "admin"
     }
     CompositeTypes: {
       [_ in never]: never
