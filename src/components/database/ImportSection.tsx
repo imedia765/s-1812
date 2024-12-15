@@ -53,14 +53,17 @@ export function ImportSection() {
         throw new Error('Invalid CSV data format');
       }
       
-      console.log('CSV data loaded:', result);
+      console.log('CSV data loaded:', result.length, 'members');
 
       const collectorIdMap = await processCollectors(result, session.user.id);
-      await processMembers(result, collectorIdMap, session.user.id);
+      console.log('Collectors processed, starting member import...');
+      
+      const importedCount = await processMembers(result, collectorIdMap, session.user.id);
+      console.log('Members import completed:', importedCount, 'members processed');
 
       toast({
         title: "Import successful",
-        description: "Members have been imported into the database",
+        description: `${importedCount} members have been imported into the database`,
       });
     } catch (error) {
       console.error('Import error:', error);
