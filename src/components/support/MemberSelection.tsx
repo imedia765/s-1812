@@ -15,7 +15,7 @@ interface MemberSelectionProps {
 
 export function MemberSelection({ selectedMembers, setSelectedMembers }: MemberSelectionProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedCollector, setSelectedCollector] = useState<string>("");
+  const [selectedCollector, setSelectedCollector] = useState<string>("all");
 
   // Fetch members
   const { data: members = [], isLoading: isLoadingMembers } = useQuery({
@@ -55,7 +55,7 @@ export function MemberSelection({ selectedMembers, setSelectedMembers }: MemberS
   const filteredMembers = members.filter((member) => {
     const matchesSearch = member.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          member.member_number.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCollector = !selectedCollector || member.collector_id === selectedCollector;
+    const matchesCollector = selectedCollector === "all" || member.collector_id === selectedCollector;
     return matchesSearch && matchesCollector;
   });
 
@@ -94,7 +94,7 @@ export function MemberSelection({ selectedMembers, setSelectedMembers }: MemberS
               <SelectValue placeholder="Filter by collector" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Collectors</SelectItem>
+              <SelectItem value="all">All Collectors</SelectItem>
               {collectors.map((collector) => (
                 <SelectItem key={collector.id} value={collector.id}>
                   {collector.name}
