@@ -15,22 +15,20 @@ export async function processCollectors(validData: CsvData[], userId: string) {
   for (const collectorName of uniqueCollectors) {
     try {
       // First try to find existing collector
-      const { data: existingCollector } = await supabase
+      const { data: existingCollectors } = await supabase
         .from('collectors')
         .select('id')
-        .ilike('name', collectorName)
-        .single();
+        .ilike('name', collectorName);
 
-      if (existingCollector) {
-        collectorIdMap.set(collectorName, existingCollector.id);
-        console.log('Using existing collector:', { id: existingCollector.id, name: collectorName });
+      if (existingCollectors && existingCollectors.length > 0) {
+        collectorIdMap.set(collectorName, existingCollectors[0].id);
+        console.log('Using existing collector:', { id: existingCollectors[0].id, name: collectorName });
         continue;
       }
 
       // If no existing collector, create new one
       const collectorData = await transformCollectorForSupabase(collectorName);
       if (!collectorData) {
-        // This shouldn't happen since we already checked for existing collector
         console.warn('Unexpected null collector data for:', collectorName);
         continue;
       }
@@ -68,15 +66,14 @@ export async function processMembers(validData: CsvData[], collectorIdMap: Map<s
       }
 
       // Check for existing member
-      const { data: existingMember } = await supabase
+      const { data: existingMembers } = await supabase
         .from('members')
         .select('id')
-        .eq('member_number', member.member_number)
-        .single();
+        .eq('member_number', member.member_number);
 
       const memberData = transformMemberForSupabase(member);
 
-      if (existingMember) {
+      if (existingMembers && existingMembers.length > 0) {
         // Update existing member
         const { error: updateError } = await supabase
           .from('members')
@@ -85,7 +82,7 @@ export async function processMembers(validData: CsvData[], collectorIdMap: Map<s
             collector_id: collectorId,
             collector: member.collector,
           })
-          .eq('id', existingMember.id);
+          .eq('id', existingMembers[0].id);
 
         if (updateError) {
           console.error('Error updating member:', updateError);
