@@ -5,6 +5,15 @@ import { useToast } from "@/components/ui/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 
+type UserRole = "member" | "collector" | "admin";
+
+interface Profile {
+  id: string;
+  email: string | null;
+  role: UserRole | null;
+  created_at: string;
+}
+
 export function UserManagementSection() {
   const { toast } = useToast();
   const [updating, setUpdating] = useState<string | null>(null);
@@ -22,11 +31,11 @@ export function UserManagementSection() {
         throw error;
       }
 
-      return data;
+      return data as Profile[];
     },
   });
 
-  const updateUserRole = async (userId: string, newRole: string) => {
+  const updateUserRole = async (userId: string, newRole: UserRole) => {
     setUpdating(userId);
     try {
       const { error } = await supabase
@@ -70,7 +79,7 @@ export function UserManagementSection() {
               </div>
               <Select
                 value={user.role || 'member'}
-                onValueChange={(value) => updateUserRole(user.id, value)}
+                onValueChange={(value: UserRole) => updateUserRole(user.id, value)}
                 disabled={updating === user.id}
               >
                 <SelectTrigger className="w-[180px]">
