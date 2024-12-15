@@ -11,26 +11,7 @@ import { NoticesSection } from "@/components/support/NoticesSection";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-
-interface TicketResponse {
-  id: string;
-  message: string;
-  created_at: string;
-  isAdmin: boolean;
-}
-
-interface Ticket {
-  id: string;
-  subject: string;
-  status: string;
-  priority: string;
-  created_at: string;
-  member: {
-    full_name: string;
-  };
-  description: string;
-  ticket_responses: TicketResponse[];
-}
+import { Ticket } from "@/types/support";
 
 export default function Support() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -58,7 +39,7 @@ export default function Support() {
         .order('created_at', { ascending: false });
       
       if (error) throw error;
-      return data as Ticket[];
+      return data as unknown as Ticket[];
     },
   });
 
@@ -86,7 +67,7 @@ export default function Support() {
   const filteredTickets = tickets.filter((ticket) => {
     const matchesSearch = 
       ticket.subject.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ticket.member?.full_name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (ticket.member?.full_name?.toLowerCase() || '').includes(searchQuery.toLowerCase()) ||
       ticket.id.toLowerCase().includes(searchQuery.toLowerCase());
 
     const matchesStatus = statusFilter === "all" || ticket.status === statusFilter;
