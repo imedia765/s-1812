@@ -35,23 +35,30 @@ export default function Register() {
       console.log("Auth user created:", authData);
 
       // Get the default collector (using the first active one)
-      const { data: defaultCollector, error: collectorError } = await supabase
+      const { data: collectors, error: collectorError } = await supabase
         .from('collectors')
         .select('id')
         .eq('active', true)
-        .limit(1)
-        .single();
+        .limit(1);
 
       if (collectorError) {
         console.error("Error fetching default collector:", collectorError);
-        throw new Error("Failed to assign a collector");
+        throw new Error("Failed to fetch collector information");
       }
+
+      // Check if we have any active collectors
+      if (!collectors || collectors.length === 0) {
+        console.error("No active collectors found");
+        throw new Error("No active collectors available. Please contact support.");
+      }
+
+      const defaultCollectorId = collectors[0].id;
 
       // Then create the member record
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
-          collector_id: defaultCollector.id, // This is required for member_number generation
+          collector_id: defaultCollectorId,
           full_name: data.fullName,
           email: data.email,
           phone: data.mobile,
