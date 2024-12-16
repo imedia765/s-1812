@@ -27,11 +27,20 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
       }
 
       console.log("Fetched collectors:", data);
-      setCollectors(data || []);
+      if (data && data.length > 0) {
+        setCollectors(data);
+        // Only set default collector if none is selected
+        if (!selectedCollector) {
+          setSelectedCollector(data[0].id);
+          onCollectorChange?.(data[0].id);
+        }
+      } else {
+        console.warn("No active collectors found in the database");
+      }
     };
 
     fetchCollectors();
-  }, []); // Remove selectedCollector from dependency array to prevent infinite loop
+  }, []); // Empty dependency array since we only want to fetch once
 
   const handleCollectorChange = (value: string) => {
     console.log("Selected collector:", value);
@@ -47,15 +56,21 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
         <div className="space-y-2">
           <Label htmlFor="collector">Select Collector</Label>
           <Select value={selectedCollector} onValueChange={handleCollectorChange}>
-            <SelectTrigger id="collector">
+            <SelectTrigger id="collector" className="w-full">
               <SelectValue placeholder="Select a collector" />
             </SelectTrigger>
             <SelectContent>
-              {collectors.map((collector) => (
-                <SelectItem key={collector.id} value={collector.id}>
-                  {collector.name}
+              {collectors.length === 0 ? (
+                <SelectItem value="no-collectors" disabled>
+                  No active collectors available
                 </SelectItem>
-              ))}
+              ) : (
+                collectors.map((collector) => (
+                  <SelectItem key={collector.id} value={collector.id}>
+                    {collector.name}
+                  </SelectItem>
+                ))
+              )}
             </SelectContent>
           </Select>
         </div>
