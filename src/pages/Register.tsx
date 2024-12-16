@@ -11,14 +11,25 @@ import { MembershipSection } from "@/components/registration/MembershipSection";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 
 export default function Register() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const { register, handleSubmit, formState: { errors } } = useForm();
+  const [selectedCollectorId, setSelectedCollectorId] = useState<string>("");
 
   const onSubmit = async (data: any) => {
     try {
+      if (!selectedCollectorId) {
+        toast({
+          title: "Registration failed",
+          description: "Please select a collector",
+          variant: "destructive",
+        });
+        return;
+      }
+
       console.log("Starting registration process with data:", data);
 
       // First, create the auth user
@@ -34,31 +45,11 @@ export default function Register() {
 
       console.log("Auth user created:", authData);
 
-      // Get the default collector (using the first active one)
-      const { data: collectors, error: collectorError } = await supabase
-        .from('collectors')
-        .select('id')
-        .eq('active', true)
-        .limit(1);
-
-      if (collectorError) {
-        console.error("Error fetching default collector:", collectorError);
-        throw new Error("Failed to fetch collector information");
-      }
-
-      // Check if we have any active collectors
-      if (!collectors || collectors.length === 0) {
-        console.error("No active collectors found");
-        throw new Error("No active collectors available. Please contact support.");
-      }
-
-      const defaultCollectorId = collectors[0].id;
-
       // Then create the member record
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
-          collector_id: defaultCollectorId,
+          collector_id: selectedCollectorId,
           full_name: data.fullName,
           email: data.email,
           phone: data.mobile,
@@ -122,7 +113,7 @@ export default function Register() {
               <NextOfKinSection />
               <SpousesSection />
               <DependantsSection />
-              <MembershipSection />
+              <MembershipSection onCollectorChange={setSelectedCollectorId} />
             </div>
             
             <div className="mt-8 pt-6 border-t">
