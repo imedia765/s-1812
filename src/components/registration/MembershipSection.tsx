@@ -14,6 +14,7 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
 
   useEffect(() => {
     const fetchCollectors = async () => {
+      console.log("Fetching collectors...");
       const { data, error } = await supabase
         .from('collectors')
         .select('id, name')
@@ -25,18 +26,21 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
         return;
       }
 
+      console.log("Fetched collectors:", data);
       setCollectors(data || []);
-      // Set the first collector as default if available
-      if (data && data.length > 0) {
+      
+      // Only set default collector if we have collectors and no collector is selected
+      if (data && data.length > 0 && !selectedCollector) {
         setSelectedCollector(data[0].id);
         onCollectorChange?.(data[0].id);
       }
     };
 
     fetchCollectors();
-  }, [onCollectorChange]);
+  }, [onCollectorChange, selectedCollector]);
 
   const handleCollectorChange = (value: string) => {
+    console.log("Selected collector:", value);
     setSelectedCollector(value);
     onCollectorChange?.(value);
   };
