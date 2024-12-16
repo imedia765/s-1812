@@ -28,16 +28,10 @@ export const MembershipSection = ({ onCollectorChange }: MembershipSectionProps)
 
       console.log("Fetched collectors:", data);
       setCollectors(data || []);
-      
-      // Only set default collector if we have collectors and no collector is selected
-      if (data && data.length > 0 && !selectedCollector) {
-        setSelectedCollector(data[0].id);
-        onCollectorChange?.(data[0].id);
-      }
     };
 
     fetchCollectors();
-  }, [onCollectorChange, selectedCollector]);
+  }, []); // Remove selectedCollector from dependency array to prevent infinite loop
 
   const handleCollectorChange = (value: string) => {
     console.log("Selected collector:", value);
