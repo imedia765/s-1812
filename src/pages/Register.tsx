@@ -18,9 +18,12 @@ export default function Register() {
   const { toast } = useToast();
   const { register, handleSubmit, formState: { errors } } = useForm();
   const [selectedCollectorId, setSelectedCollectorId] = useState<string>("");
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const onSubmit = async (data: any) => {
     try {
+      setIsSubmitting(true);
+
       if (!selectedCollectorId) {
         toast({
           title: "Registration failed",
@@ -86,6 +89,8 @@ export default function Register() {
         description: error instanceof Error ? error.message : "An error occurred during registration",
         variant: "destructive",
       });
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -117,8 +122,12 @@ export default function Register() {
             </div>
             
             <div className="mt-8 pt-6 border-t">
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90">
-                Submit Registration
+              <Button 
+                type="submit" 
+                className="w-full bg-primary hover:bg-primary/90"
+                disabled={isSubmitting}
+              >
+                {isSubmitting ? "Submitting..." : "Submit Registration"}
               </Button>
             </div>
           </form>
