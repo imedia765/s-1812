@@ -66,8 +66,8 @@ export default function Login() {
       }
 
       // Check if member has completed registration
-      if (!member.email || member.email.includes('@temp.pwaburton.org') || member.email.includes('@temporary.org')) {
-        // Redirect to registration with member ID
+      if (!member.email || member.email.includes('@temp.pwaburton.org')) {
+        // Redirect to registration with member data
         navigate('/register', { 
           state: { 
             memberId: member.member_number,
@@ -76,17 +76,18 @@ export default function Login() {
               address: member.address,
               town: member.town,
               postCode: member.postcode,
-              phone: member.phone,
-              dateOfBirth: member.date_of_birth,
+              mobile: member.phone,
+              dob: member.date_of_birth,
               gender: member.gender,
-              maritalStatus: member.marital_status
+              maritalStatus: member.marital_status,
+              email: member.email?.includes('@temp.pwaburton.org') ? '' : member.email
             }
           }
         });
         return;
       }
 
-      // For existing members, attempt to sign in with provided password
+      // For existing members, attempt to sign in
       const { error: signInError } = await supabase.auth.signInWithPassword({
         email: member.email,
         password: password,

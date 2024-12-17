@@ -1,54 +1,49 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { countries } from "@/data/countries";
-import { supabase } from "@/integrations/supabase/client";
-import debounce from "lodash/debounce";
+import { useLocation } from "react-router-dom";
 
 interface PersonalInfoProps {
   register: UseFormRegister<any>;
   setValue: UseFormSetValue<any>;
 }
 
+interface LocationState {
+  memberId?: string;
+  prefilledData?: {
+    fullName: string;
+    address: string;
+    town: string;
+    postCode: string;
+    mobile: string;
+    dob: string;
+    gender: string;
+    maritalStatus: string;
+    email: string;
+  };
+}
+
 export const PersonalInfoSection = ({ register, setValue }: PersonalInfoProps) => {
-  const [isSearching, setIsSearching] = useState(false);
+  const location = useLocation();
+  const state = location.state as LocationState;
 
-  const searchMember = debounce(async (name: string) => {
-    if (!name || name.length < 3) return;
-
-    setIsSearching(true);
-    try {
-      const { data: members, error } = await supabase
-        .from('members')
-        .select('*')
-        .ilike('full_name', `%${name}%`)
-        .limit(1);
-
-      if (error) {
-        console.error("Error searching for member:", error);
-        return;
-      }
-
-      if (members && members.length > 0) {
-        const member = members[0];
-        // Pre-fill the form with member data
-        setValue("address", member.address || "");
-        setValue("town", member.town || "");
-        setValue("postCode", member.postcode || "");
-        setValue("email", member.email || "");
-        setValue("mobile", member.phone || "");
-        setValue("dob", member.date_of_birth || "");
-        setValue("maritalStatus", member.marital_status || "");
-        setValue("gender", member.gender || "");
-      }
-    } catch (error) {
-      console.error("Error in member search:", error);
-    } finally {
-      setIsSearching(false);
+  useEffect(() => {
+    if (state?.prefilledData) {
+      const data = state.prefilledData;
+      setValue("fullName", data.fullName);
+      setValue("address", data.address || "");
+      setValue("town", data.town || "");
+      setValue("postCode", data.postCode || "");
+      setValue("mobile", data.mobile || "");
+      setValue("dob", data.dob || "");
+      setValue("gender", data.gender || "");
+      setValue("maritalStatus", data.maritalStatus || "");
+      setValue("email", data.email || "");
     }
-  }, 500);
+  }, [state, setValue]);
 
   return (
     <div className="space-y-4">
@@ -58,14 +53,8 @@ export const PersonalInfoSection = ({ register, setValue }: PersonalInfoProps) =
           <label htmlFor="fullName">Full Name</label>
           <Input
             id="fullName"
-            {...register("fullName", { 
-              required: true,
-              onChange: (e) => searchMember(e.target.value)
-            })}
+            {...register("fullName", { required: true })}
           />
-          {isSearching && (
-            <p className="text-sm text-muted-foreground">Searching...</p>
-          )}
         </div>
         <div className="space-y-2">
           <label htmlFor="address">Address</label>
@@ -134,7 +123,7 @@ export const PersonalInfoSection = ({ register, setValue }: PersonalInfoProps) =
         </div>
         <div className="space-y-2">
           <label htmlFor="pob">Place of Birth</label>
-          <Select onValueChange={(value) => register("pob").onChange({ target: { value } })}>
+          <Select onValueChange={(value) => setValue("pob", value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select Country of Birth" />
             </SelectTrigger>
@@ -149,7 +138,7 @@ export const PersonalInfoSection = ({ register, setValue }: PersonalInfoProps) =
         </div>
         <div className="space-y-2">
           <label htmlFor="maritalStatus">Marital Status</label>
-          <Select onValueChange={(value) => register("maritalStatus").onChange({ target: { value } })}>
+          <Select onValueChange={(value) => setValue("maritalStatus", value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select Marital Status" />
             </SelectTrigger>
@@ -163,7 +152,7 @@ export const PersonalInfoSection = ({ register, setValue }: PersonalInfoProps) =
         </div>
         <div className="space-y-2">
           <label htmlFor="gender">Gender</label>
-          <Select onValueChange={(value) => register("gender").onChange({ target: { value } })}>
+          <Select onValueChange={(value) => setValue("gender", value)}>
             <SelectTrigger>
               <SelectValue placeholder="Select Gender" />
             </SelectTrigger>
