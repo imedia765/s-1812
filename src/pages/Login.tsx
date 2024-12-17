@@ -35,6 +35,8 @@ export default function Login() {
         title: "Login successful",
         description: "Welcome back!",
       });
+      
+      navigate('/admin');
     } catch (error) {
       console.error("Email login error:", error);
       toast({
@@ -65,46 +67,46 @@ export default function Login() {
         throw new Error("Member ID not found");
       }
 
-      // Check if member has completed registration
-      if (!member.email || member.email.includes('@temp.pwaburton.org')) {
-        // Redirect to registration with member data
-        navigate('/register', { 
-          state: { 
-            memberId: member.member_number,
-            prefilledData: {
-              fullName: member.full_name,
-              address: member.address,
-              town: member.town,
-              postCode: member.postcode,
-              mobile: member.phone,
-              dob: member.date_of_birth,
-              gender: member.gender,
-              maritalStatus: member.marital_status,
-              email: member.email?.includes('@temp.pwaburton.org') ? '' : member.email
-            }
-          }
+      // Check if member has completed registration and profile is updated
+      if (member.profile_updated) {
+        // If profile is updated, sign in and redirect to dashboard
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: member.email,
+          password: password,
         });
+
+        if (signInError) {
+          if (signInError.message === "Email not confirmed") {
+            setShowEmailConfirmation(true);
+            throw new Error("Please check your email for confirmation link");
+          }
+          throw signInError;
+        }
+
+        toast({
+          title: "Login successful",
+          description: "Welcome back!",
+        });
+        navigate('/admin');
         return;
       }
 
-      // For existing members, attempt to sign in
-      const { error: signInError } = await supabase.auth.signInWithPassword({
-        email: member.email,
-        password: password,
-      });
-
-      if (signInError) {
-        if (signInError.message === "Email not confirmed") {
-          setShowEmailConfirmation(true);
-          throw new Error("Please check your email for confirmation link");
+      // For members without completed profile, redirect to registration
+      navigate('/register', { 
+        state: { 
+          memberId: member.member_number,
+          prefilledData: {
+            fullName: member.full_name,
+            address: member.address,
+            town: member.town,
+            postCode: member.postcode,
+            mobile: member.phone,
+            dob: member.date_of_birth,
+            gender: member.gender,
+            maritalStatus: member.marital_status,
+            email: member.email?.includes('@temp.pwaburton.org') ? '' : member.email
+          }
         }
-        console.error("Auth error:", signInError);
-        throw signInError;
-      }
-
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
       });
     } catch (error) {
       console.error("Member ID login error:", error);
