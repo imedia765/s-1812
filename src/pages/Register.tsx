@@ -20,22 +20,9 @@ export default function Register() {
   const [selectedCollectorId, setSelectedCollectorId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const onSubmit = async (data: any) => {
+  const createMember = async (data: any, retryCount = 0): Promise<any> => {
+    const maxRetries = 3;
     try {
-      setIsSubmitting(true);
-
-      if (!selectedCollectorId) {
-        toast({
-          title: "Registration failed",
-          description: "Please select a collector",
-          variant: "destructive",
-        });
-        return;
-      }
-
-      console.log("Starting registration process with data:", { ...data, collectorId: selectedCollectorId });
-
-      // First, create the member record
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
@@ -56,10 +43,43 @@ export default function Register() {
         .single();
 
       if (memberError) {
-        console.error("Member creation error:", memberError);
-        throw new Error(memberError.message);
+        // Check if it's a duplicate member_number error
+        if (memberError.code === '23505' && retryCount < maxRetries) {
+          console.log(`Retry attempt ${retryCount + 1} due to duplicate member number`);
+          // Wait a short random time before retrying to reduce chance of collision
+          await new Promise(resolve => setTimeout(resolve, Math.random() * 1000));
+          return createMember(data, retryCount + 1);
+        }
+        throw memberError;
       }
 
+      return memberData;
+    } catch (error) {
+      if (retryCount >= maxRetries) {
+        console.error("Max retry attempts reached:", error);
+        throw new Error("Failed to create member after multiple attempts");
+      }
+      throw error;
+    }
+  };
+
+  const onSubmit = async (data: any) => {
+    try {
+      setIsSubmitting(true);
+
+      if (!selectedCollectorId) {
+        toast({
+          title: "Registration failed",
+          description: "Please select a collector",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      console.log("Starting registration process with data:", { ...data, collectorId: selectedCollectorId });
+
+      // Create member with retry mechanism
+      const memberData = await createMember(data);
       console.log("Member created:", memberData);
 
       // Create registration record
