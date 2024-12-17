@@ -11,13 +11,14 @@ import { MembershipSection } from "@/components/registration/MembershipSection";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { RegistrationStateHandler } from "@/components/registration/RegistrationStateHandler";
 
 export default function Register() {
   const navigate = useNavigate();
   const location = useLocation();
   const { toast } = useToast();
-  const { register, handleSubmit, setValue, formState: { errors } } = useForm();
+  const { register, handleSubmit, setValue } = useForm();
   const [selectedCollectorId, setSelectedCollectorId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -36,37 +37,6 @@ export default function Register() {
     };
   };
 
-  useEffect(() => {
-    // If no state or memberId, this is a new registration
-    if (!state?.memberId) {
-      return;
-    }
-
-    // Check if member already has completed profile
-    const checkMemberProfile = async () => {
-      const { data: member, error } = await supabase
-        .from('members')
-        .select('profile_updated')
-        .eq('member_number', state.memberId)
-        .single();
-
-      if (error) {
-        console.error("Error checking member profile:", error);
-        return;
-      }
-
-      if (member?.profile_updated) {
-        toast({
-          title: "Profile Already Updated",
-          description: "Your profile is already complete. Redirecting to dashboard...",
-        });
-        navigate('/admin');
-      }
-    };
-
-    checkMemberProfile();
-  }, [state?.memberId, navigate, toast]);
-
   const onSubmit = async (data: any) => {
     try {
       setIsSubmitting(true);
@@ -84,7 +54,7 @@ export default function Register() {
 
       if (state?.memberId) {
         // Update existing member
-        const { data: memberData, error: memberError } = await supabase
+        const { error: memberError } = await supabase
           .from('members')
           .update({
             collector_id: selectedCollectorId,
@@ -112,7 +82,7 @@ export default function Register() {
         });
       } else {
         // Create new member
-        const { data: memberData, error: memberError } = await supabase
+        const { error: memberError } = await supabase
           .from('members')
           .insert({
             collector_id: selectedCollectorId,
@@ -134,23 +104,12 @@ export default function Register() {
 
         if (memberError) throw memberError;
 
-        // Create registration record
-        const { error: registrationError } = await supabase
-          .from('registrations')
-          .insert({
-            member_id: memberData.id,
-            status: 'pending'
-          });
-
-        if (registrationError) throw registrationError;
-
         toast({
           title: "Registration successful",
           description: "Your registration has been submitted and is pending approval.",
         });
       }
 
-      // Redirect to login
       navigate("/login");
     } catch (error) {
       console.error("Registration error:", error);
@@ -166,6 +125,7 @@ export default function Register() {
 
   return (
     <div className="container py-8 max-w-4xl mx-auto">
+      <RegistrationStateHandler />
       <Card className="shadow-lg">
         <CardHeader className="bg-primary/5 border-b">
           <CardTitle className="text-2xl text-center text-primary">
@@ -177,8 +137,7 @@ export default function Register() {
             <InfoIcon className="h-4 w-4 text-blue-500" />
             <AlertDescription className="text-sm text-blue-700">
               Your personal information will be processed in accordance with our Privacy Policy and the GDPR.
-              We collect this information to manage your membership and provide our services. Your data will be
-              stored securely and will not be shared with third parties without your consent.
+              We collect this information to manage your membership and provide our services.
             </AlertDescription>
           </Alert>
           

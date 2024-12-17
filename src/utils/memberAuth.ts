@@ -8,7 +8,7 @@ export async function getMemberByMemberId(memberId: string) {
       .from('members')
       .select('*')
       .eq('member_number', memberId.toUpperCase().trim())
-      .maybeSingle();
+      .maybeSingle(); // Use maybeSingle() instead of single()
 
     if (error) {
       console.error("Database error when looking up member:", error);
