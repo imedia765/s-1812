@@ -16,7 +16,7 @@ import { useState } from "react";
 export default function Register() {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, setValue, formState: { errors } } = useForm();
   const [selectedCollectorId, setSelectedCollectorId] = useState<string>("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -134,7 +134,7 @@ export default function Register() {
           
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-8">
             <div className="space-y-8 divide-y divide-gray-200">
-              <PersonalInfoSection register={register} />
+              <PersonalInfoSection register={register} setValue={setValue} />
               <NextOfKinSection />
               <SpousesSection />
               <DependantsSection />

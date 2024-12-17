@@ -1,14 +1,55 @@
+import { useEffect, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UseFormRegister } from "react-hook-form";
+import { UseFormRegister, UseFormSetValue } from "react-hook-form";
 import { countries } from "@/data/countries";
+import { supabase } from "@/integrations/supabase/client";
+import debounce from "lodash/debounce";
 
 interface PersonalInfoProps {
   register: UseFormRegister<any>;
+  setValue: UseFormSetValue<any>;
 }
 
-export const PersonalInfoSection = ({ register }: PersonalInfoProps) => {
+export const PersonalInfoSection = ({ register, setValue }: PersonalInfoProps) => {
+  const [isSearching, setIsSearching] = useState(false);
+
+  const searchMember = debounce(async (name: string) => {
+    if (!name || name.length < 3) return;
+
+    setIsSearching(true);
+    try {
+      const { data: members, error } = await supabase
+        .from('members')
+        .select('*')
+        .ilike('full_name', `%${name}%`)
+        .limit(1);
+
+      if (error) {
+        console.error("Error searching for member:", error);
+        return;
+      }
+
+      if (members && members.length > 0) {
+        const member = members[0];
+        // Pre-fill the form with member data
+        setValue("address", member.address || "");
+        setValue("town", member.town || "");
+        setValue("postCode", member.postcode || "");
+        setValue("email", member.email || "");
+        setValue("mobile", member.phone || "");
+        setValue("dob", member.date_of_birth || "");
+        setValue("maritalStatus", member.marital_status || "");
+        setValue("gender", member.gender || "");
+      }
+    } catch (error) {
+      console.error("Error in member search:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  }, 500);
+
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Personal Information</h3>
@@ -17,8 +58,14 @@ export const PersonalInfoSection = ({ register }: PersonalInfoProps) => {
           <label htmlFor="fullName">Full Name</label>
           <Input
             id="fullName"
-            {...register("fullName", { required: true })}
+            {...register("fullName", { 
+              required: true,
+              onChange: (e) => searchMember(e.target.value)
+            })}
           />
+          {isSearching && (
+            <p className="text-sm text-muted-foreground">Searching...</p>
+          )}
         </div>
         <div className="space-y-2">
           <label htmlFor="address">Address</label>
