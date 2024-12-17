@@ -23,6 +23,8 @@ export default function Register() {
   const createMember = async (data: any, retryCount = 0): Promise<any> => {
     const maxRetries = 3;
     try {
+      console.log("Attempting to create member, attempt:", retryCount + 1);
+      
       const { data: memberData, error: memberError } = await supabase
         .from('members')
         .insert({
