@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { NavigationMenu } from "@/components/NavigationMenu";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { AuthProvider } from "@/contexts/AuthContext";
 import Footer from "@/components/Footer";
 import Index from "./pages/Index";
 import Login from "./pages/Login";
@@ -25,7 +26,7 @@ import Support from "./pages/admin/Support";
 import Profile from "./pages/admin/Profile";
 import React from 'react';
 
-// Create a new QueryClient instance
+// Create a new QueryClient instance with optimized caching
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -33,11 +34,11 @@ const queryClient = new QueryClient({
       staleTime: 30000,
       gcTime: 300000,
       refetchOnWindowFocus: false,
+      cacheTime: 5 * 60 * 1000, // Cache for 5 minutes
     },
   },
 });
 
-// Create the App component as a proper React functional component
 const App: React.FC = () => {
   return (
     <React.StrictMode>
@@ -48,31 +49,33 @@ const App: React.FC = () => {
               <Toaster />
               <Sonner />
               <BrowserRouter>
-                <div className="min-h-screen flex flex-col">
-                  <NavigationMenu />
-                  <div className="flex-grow">
-                    <Routes>
-                      <Route path="/" element={<Index />} />
-                      <Route path="/login" element={<Login />} />
-                      <Route path="/register" element={<Register />} />
-                      <Route path="/change-password" element={<ChangePassword />} />
-                      <Route path="/terms" element={<TermsAndConditions />} />
-                      <Route path="/collector-responsibilities" element={<CollectorResponsibilities />} />
-                      <Route path="/medical-examiner-process" element={<MedicalExaminerProcess />} />
-                      <Route path="/admin" element={<AdminLayout />}>
-                        <Route index element={<Dashboard />} />
-                        <Route path="members" element={<Members />} />
-                        <Route path="collectors" element={<Collectors />} />
-                        <Route path="registrations" element={<Registrations />} />
-                        <Route path="database" element={<Database />} />
-                        <Route path="finance" element={<Finance />} />
-                        <Route path="support" element={<Support />} />
-                        <Route path="profile" element={<Profile />} />
-                      </Route>
-                    </Routes>
+                <AuthProvider>
+                  <div className="min-h-screen flex flex-col">
+                    <NavigationMenu />
+                    <div className="flex-grow">
+                      <Routes>
+                        <Route path="/" element={<Index />} />
+                        <Route path="/login" element={<Login />} />
+                        <Route path="/register" element={<Register />} />
+                        <Route path="/change-password" element={<ChangePassword />} />
+                        <Route path="/terms" element={<TermsAndConditions />} />
+                        <Route path="/collector-responsibilities" element={<CollectorResponsibilities />} />
+                        <Route path="/medical-examiner-process" element={<MedicalExaminerProcess />} />
+                        <Route path="/admin" element={<AdminLayout />}>
+                          <Route index element={<Dashboard />} />
+                          <Route path="members" element={<Members />} />
+                          <Route path="collectors" element={<Collectors />} />
+                          <Route path="registrations" element={<Registrations />} />
+                          <Route path="database" element={<Database />} />
+                          <Route path="finance" element={<Finance />} />
+                          <Route path="support" element={<Support />} />
+                          <Route path="profile" element={<Profile />} />
+                        </Route>
+                      </Routes>
+                    </div>
+                    <Footer />
                   </div>
-                  <Footer />
-                </div>
+                </AuthProvider>
               </BrowserRouter>
             </TooltipProvider>
           </ThemeProvider>
