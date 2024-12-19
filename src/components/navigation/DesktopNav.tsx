@@ -23,27 +23,29 @@ export const DesktopNav = ({ isLoggedIn, handleLogout }: DesktopNavProps) => {
   return (
     <div className="hidden md:flex items-center space-x-2">
       {isLoggedIn ? (
-        <Button variant="outline" size="sm" onClick={onLogoutClick}>
-          Logout
-        </Button>
+        <>
+          <Button variant="outline" size="sm" onClick={onLogoutClick}>
+            Logout
+          </Button>
+          <Link to="/admin">
+            <Button variant="outline" size="sm">
+              Admin Panel
+            </Button>
+          </Link>
+        </>
       ) : (
-        <Link to="/login">
-          <Button variant="outline" size="sm">
-            Login
-          </Button>
-        </Link>
-      )}
-      <Link to="/register">
-        <Button variant="default" size="sm">
-          Register
-        </Button>
-      </Link>
-      {isLoggedIn && (
-        <Link to="/admin">
-          <Button variant="outline" size="sm">
-            Admin Panel
-          </Button>
-        </Link>
+        <>
+          <Link to="/login">
+            <Button variant="outline" size="sm">
+              Login
+            </Button>
+          </Link>
+          <Link to="/register">
+            <Button variant="default" size="sm">
+              Register
+            </Button>
+          </Link>
+        </>
       )}
       <ThemeToggle />
     </div>

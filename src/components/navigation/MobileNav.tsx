@@ -44,37 +44,39 @@ export const MobileNav = ({
               Menu
             </div>
             {isLoggedIn ? (
-              <Button
-                variant="outline"
-                className="justify-start bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                onClick={onLogoutClick}
-              >
-                Logout
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                  onClick={onLogoutClick}
+                >
+                  Logout
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
+                  onClick={() => handleNavigation("/admin")}
+                >
+                  Admin Panel
+                </Button>
+              </>
             ) : (
-              <Button
-                variant="outline"
-                className="justify-start bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300"
-                onClick={() => handleNavigation("/login")}
-              >
-                Login
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              className="justify-start bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300"
-              onClick={() => handleNavigation("/register")}
-            >
-              Register
-            </Button>
-            {isLoggedIn && (
-              <Button
-                variant="outline"
-                className="justify-start bg-emerald-50 dark:bg-emerald-900/20 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300"
-                onClick={() => handleNavigation("/admin")}
-              >
-                Admin Panel
-              </Button>
+              <>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 text-blue-700 dark:text-blue-300"
+                  onClick={() => handleNavigation("/login")}
+                >
+                  Login
+                </Button>
+                <Button
+                  variant="outline"
+                  className="justify-start bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/30 text-purple-700 dark:text-purple-300"
+                  onClick={() => handleNavigation("/register")}
+                >
+                  Register
+                </Button>
+              </>
             )}
           </div>
         </SheetContent>
