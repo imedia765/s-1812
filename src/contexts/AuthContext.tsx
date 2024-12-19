@@ -22,6 +22,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Check initial auth state
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
+      console.log("Initial session check:", session);
       setIsAuthenticated(!!session);
       if (session) {
         const { data: profileData } = await supabase
@@ -37,6 +38,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Subscribe to auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log("Auth state changed:", event, session);
       setIsAuthenticated(!!session);
       if (session) {
         const { data: profileData } = await supabase
@@ -78,12 +80,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+      
+      // Clear any cached data
+      localStorage.clear();
+      sessionStorage.clear();
+      
+      // Reset auth state
+      setIsAuthenticated(false);
+      setUserRole(null);
+      
+      // Navigate to login
       navigate('/login');
+      
       toast({
         title: "Logged out successfully",
         description: "Come back soon!",
       });
     } catch (error) {
+      console.error("Logout error:", error);
       toast({
         title: "Logout failed",
         description: error instanceof Error ? error.message : "An unexpected error occurred",

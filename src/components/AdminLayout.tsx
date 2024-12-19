@@ -11,6 +11,7 @@ import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "../integrations/supabase/client";
 import { useToast } from "./ui/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@/contexts/AuthContext";
 
 const menuItems = [
   { icon: LayoutDashboard, label: "Dashboard", to: "/admin" },
@@ -26,12 +27,12 @@ const menuItems = [
 export function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const refreshIntervalRef = useRef<NodeJS.Timeout>();
   const lastActivityRef = useRef(Date.now());
+  const { isAuthenticated, userRole } = useAuth();
 
   // Update last activity timestamp on any user interaction
   useEffect(() => {
@@ -55,12 +56,13 @@ export function AdminLayout() {
       const { data: { session }, error } = await supabase.auth.getSession();
       if (error) throw error;
       
-      if (!session && location.pathname !== '/login') {
+      if (!session) {
+        console.log("No session found, redirecting to login");
         navigate("/login");
         return false;
       }
       
-      return !!session;
+      return true;
     } catch (error) {
       console.error('Session check error:', error);
       toast({
@@ -71,7 +73,7 @@ export function AdminLayout() {
       navigate("/login");
       return false;
     }
-  }, [navigate, toast, location.pathname]);
+  }, [navigate, toast]);
 
   useEffect(() => {
     let isActive = true;
@@ -82,7 +84,6 @@ export function AdminLayout() {
       setLoading(true);
       const hasSession = await checkSession();
       if (isActive) {
-        setIsLoggedIn(hasSession);
         setLoading(false);
       }
     };
@@ -94,9 +95,9 @@ export function AdminLayout() {
       if (!isActive) return;
       
       console.log("Auth state changed:", event);
-      setIsLoggedIn(!!session);
       
-      if (!session && location.pathname !== '/login') {
+      if (!session) {
+        console.log("No session in auth state change, redirecting to login");
         navigate("/login");
       }
     });
@@ -118,7 +119,7 @@ export function AdminLayout() {
       }, 30000);
     };
 
-    if (isLoggedIn) {
+    if (isAuthenticated) {
       setupQueryRefresh();
     }
 
@@ -130,7 +131,7 @@ export function AdminLayout() {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [navigate, queryClient, location.pathname, isLoggedIn, checkSession]);
+  }, [navigate, queryClient, location.pathname, isAuthenticated, checkSession]);
 
   const handleNavigation = useCallback((path: string) => {
     if (location.pathname !== path) {
@@ -149,7 +150,9 @@ export function AdminLayout() {
     );
   }
 
-  if (!isLoggedIn) {
+  if (!isAuthenticated) {
+    console.log("Not authenticated in render, redirecting to login");
+    navigate("/login");
     return null;
   }
 
