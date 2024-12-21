@@ -53,14 +53,18 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         throw new Error("Member ID not found");
       }
 
-      // For first time login or if using member number as password
-      if (member.first_time_login && password === member.member_number) {
-        const tempEmail = `${memberId.toLowerCase()}@temp.pwaburton.org`;
-        console.log("First time login attempt with temp email:", tempEmail);
+      // For first time login
+      if (member.first_time_login) {
+        console.log("First time login detected for member:", memberId);
+
+        // Check if member has an email
+        if (!member.email) {
+          throw new Error("Email address required for registration. Please contact support.");
+        }
 
         // Try signing in first in case user already exists
         const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email: tempEmail,
+          email: member.email,
           password,
         });
 
@@ -74,10 +78,10 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
           return;
         }
 
-        // If sign in failed, try creating a new user
-        console.log("Creating new auth user for first-time login");
+        // If sign in failed, create new user with member's email
+        console.log("Creating new auth user with email:", member.email);
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email: tempEmail,
+          email: member.email,
           password,
           options: {
             data: {
@@ -94,7 +98,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
 
         // Attempt immediate login after signup
         const { error: newSignInError } = await supabase.auth.signInWithPassword({
-          email: tempEmail,
+          email: member.email,
           password,
         });
 
@@ -111,15 +115,14 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         return;
       }
 
-      // For returning users with email
-      const email = member.email;
-      if (!email) {
+      // For returning users
+      if (!member.email) {
         throw new Error("No email associated with this member");
       }
 
-      console.log("Attempting login with email:", email);
+      console.log("Attempting login with email:", member.email);
       const { error } = await supabase.auth.signInWithPassword({
-        email,
+        email: member.email,
         password,
       });
 
