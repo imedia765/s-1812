@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Cog, User, Mail, Phone, MapPin, Calendar } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -8,8 +9,10 @@ import { SpousesSection } from "@/components/registration/SpousesSection";
 import { DependantsSection } from "@/components/registration/DependantsSection";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Icons } from "@/components/ui/icons";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Member } from "@/components/members/types";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate } from "react-router-dom";
 
 interface AccountSettingsSectionProps {
   memberData?: Member;
@@ -17,12 +20,77 @@ interface AccountSettingsSectionProps {
 
 export const AccountSettingsSection = ({ memberData }: AccountSettingsSectionProps) => {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formData, setFormData] = useState({
+    full_name: memberData?.full_name || "",
+    address: memberData?.address || "",
+    town: memberData?.town || "",
+    postcode: memberData?.postcode || "",
+    email: memberData?.email || "",
+    phone: memberData?.phone || "",
+    date_of_birth: memberData?.date_of_birth || "",
+    marital_status: memberData?.marital_status || "",
+    gender: memberData?.gender || "",
+  });
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
 
   const handleGoogleLink = () => {
     toast({
       title: "Google Account Linking",
       description: "This feature will be implemented soon.",
     });
+  };
+
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      console.log("Updating profile with data:", formData);
+
+      const { error } = await supabase
+        .from('members')
+        .update({
+          ...formData,
+          profile_updated: true,
+          first_time_login: false,
+          profile_completed: true,
+          updated_at: new Date().toISOString()
+        })
+        .eq('email', memberData?.email);
+
+      if (error) {
+        console.error("Profile update error:", error);
+        throw error;
+      }
+
+      toast({
+        title: "Profile Updated",
+        description: "Your profile has been successfully updated.",
+      });
+
+      // If this was a first-time login, redirect to admin dashboard
+      if (memberData?.first_time_login) {
+        navigate('/admin');
+      }
+
+    } catch (error: any) {
+      console.error("Profile update failed:", error);
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update profile. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -45,29 +113,50 @@ export const AccountSettingsSection = ({ memberData }: AccountSettingsSectionPro
               <User className="h-4 w-4" />
               Full Name
             </label>
-            <Input defaultValue={memberData?.full_name} />
+            <Input 
+              name="full_name"
+              value={formData.full_name}
+              onChange={handleInputChange}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
               <MapPin className="h-4 w-4" />
               Address
             </label>
-            <Textarea defaultValue={memberData?.address || ""} />
+            <Textarea 
+              name="address"
+              value={formData.address}
+              onChange={handleInputChange}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Town</label>
-            <Input defaultValue={memberData?.town || ""} />
+            <Input 
+              name="town"
+              value={formData.town}
+              onChange={handleInputChange}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Post Code</label>
-            <Input defaultValue={memberData?.postcode || ""} />
+            <Input 
+              name="postcode"
+              value={formData.postcode}
+              onChange={handleInputChange}
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
               <Mail className="h-4 w-4" />
               Email
             </label>
-            <Input defaultValue={memberData?.email || ""} type="email" />
+            <Input 
+              name="email"
+              value={formData.email}
+              onChange={handleInputChange}
+              type="email"
+            />
           </div>
           <div className="space-y-2">
             <Button
@@ -84,7 +173,12 @@ export const AccountSettingsSection = ({ memberData }: AccountSettingsSectionPro
               <Phone className="h-4 w-4" />
               Mobile No
             </label>
-            <Input defaultValue={memberData?.phone || ""} type="tel" />
+            <Input 
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              type="tel"
+            />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium flex items-center gap-2">
@@ -92,13 +186,18 @@ export const AccountSettingsSection = ({ memberData }: AccountSettingsSectionPro
               Date of Birth
             </label>
             <Input 
-              type="date" 
-              defaultValue={memberData?.date_of_birth || ""} 
+              name="date_of_birth"
+              value={formData.date_of_birth}
+              onChange={handleInputChange}
+              type="date"
             />
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Marital Status</label>
-            <Select defaultValue={memberData?.marital_status || ""}>
+            <Select 
+              value={formData.marital_status}
+              onValueChange={(value) => handleSelectChange("marital_status", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Marital Status" />
               </SelectTrigger>
@@ -112,7 +211,10 @@ export const AccountSettingsSection = ({ memberData }: AccountSettingsSectionPro
           </div>
           <div className="space-y-2">
             <label className="text-sm font-medium">Gender</label>
-            <Select defaultValue={memberData?.gender || ""}>
+            <Select 
+              value={formData.gender}
+              onValueChange={(value) => handleSelectChange("gender", value)}
+            >
               <SelectTrigger>
                 <SelectValue placeholder="Select Gender" />
               </SelectTrigger>
@@ -132,7 +234,13 @@ export const AccountSettingsSection = ({ memberData }: AccountSettingsSectionPro
         </div>
 
         <div className="flex justify-end">
-          <Button className="bg-green-500 hover:bg-green-600">Update Profile</Button>
+          <Button 
+            className="bg-green-500 hover:bg-green-600"
+            onClick={handleSubmit}
+            disabled={isSubmitting}
+          >
+            {isSubmitting ? "Updating..." : "Update Profile"}
+          </Button>
         </div>
       </CollapsibleContent>
     </Collapsible>
