@@ -23,6 +23,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         throw error;
       }
 
+      console.log("Login successful:", data);
       toast({
         title: "Login successful",
         description: "Welcome back!",
@@ -54,13 +55,29 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
 
       // For first time login or if using member number as password
       if (member.first_time_login && password === member.member_number) {
-        // Create auth user with temporary email
-        const email = `${memberId.toLowerCase()}@temp.pwaburton.org`;
+        const tempEmail = `${memberId.toLowerCase()}@temp.pwaburton.org`;
+        console.log("First time login attempt with temp email:", tempEmail);
+
+        // Try signing in first in case user already exists
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email: tempEmail,
+          password,
+        });
+
+        if (!signInError) {
+          console.log("Existing user found and signed in:", signInData);
+          toast({
+            title: "Login successful",
+            description: "Welcome back!",
+          });
+          setIsLoggedIn(true);
+          return;
+        }
+
+        // If sign in failed, try creating a new user
         console.log("Creating new auth user for first-time login");
-        
-        // First, try to sign up the user
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-          email,
+          email: tempEmail,
           password,
           options: {
             data: {
@@ -71,54 +88,34 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         });
 
         if (signUpError) {
-          // If user already exists, try signing in directly
-          if (signUpError.message.includes('already registered')) {
-            const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-              email,
-              password,
-            });
-
-            if (signInError) {
-              console.error("Sign in error:", signInError);
-              throw signInError;
-            }
-
-            toast({
-              title: "Login successful",
-              description: "Welcome back!",
-            });
-            setIsLoggedIn(true);
-            return;
-          }
-          
-          console.error("First-time login error:", signUpError);
+          console.error("Sign up error:", signUpError);
           throw signUpError;
         }
 
-        // For new signups, attempt immediate login
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email,
+        // Attempt immediate login after signup
+        const { error: newSignInError } = await supabase.auth.signInWithPassword({
+          email: tempEmail,
           password,
         });
 
-        if (signInError) {
-          console.error("First-time sign in error:", signInError);
-          throw signInError;
+        if (newSignInError) {
+          console.error("Post-signup sign in error:", newSignInError);
+          throw newSignInError;
         }
 
         toast({
           title: "First-time login successful",
           description: "Please complete your profile setup",
         });
-        
-        console.log("First-time login successful for member:", memberId);
         setIsLoggedIn(true);
         return;
       }
 
-      // For returning users, attempt normal login with email
+      // For returning users with email
       const email = member.email;
-      if (!email) throw new Error("No email associated with this member");
+      if (!email) {
+        throw new Error("No email associated with this member");
+      }
 
       console.log("Attempting login with email:", email);
       const { error } = await supabase.auth.signInWithPassword({
