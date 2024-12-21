@@ -1,10 +1,10 @@
 import { supabase } from "@/integrations/supabase/client";
 
 export async function getMemberByMemberId(memberId: string) {
-  console.log("Looking up member with member_number:", memberId);
-  
   try {
-    // First try exact match
+    console.log("Looking up member with ID:", memberId);
+    
+    // Try exact match first
     let { data, error } = await supabase
       .from('members')
       .select('*')
@@ -17,17 +17,8 @@ export async function getMemberByMemberId(memberId: string) {
     }
 
     if (!data) {
-      // If no exact match, try case-insensitive match
-      ({ data, error } = await supabase
-        .from('members')
-        .select('*')
-        .ilike('member_number', memberId)
-        .maybeSingle());
-
-      if (error) {
-        console.error("Database error when looking up member (case-insensitive):", error);
-        throw error;
-      }
+      console.log("No member found with ID:", memberId);
+      return null;
     }
 
     console.log("Member lookup result:", data);

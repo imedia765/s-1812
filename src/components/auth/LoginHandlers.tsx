@@ -58,7 +58,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         const email = `${memberId.toLowerCase()}@temp.pwaburton.org`;
         console.log("Creating new auth user for first-time login");
         
-        const { data, error } = await supabase.auth.signUp({
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
@@ -69,9 +69,20 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
           }
         });
 
-        if (error) {
-          console.error("First-time login error:", error);
-          throw error;
+        if (signUpError) {
+          console.error("First-time login error:", signUpError);
+          throw signUpError;
+        }
+
+        // If sign up successful, attempt immediate login
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          console.error("First-time sign in error:", signInError);
+          throw signInError;
         }
 
         toast({
@@ -84,7 +95,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         return;
       }
 
-      // For returning users, attempt normal login
+      // For returning users, attempt normal login with email
       const email = member.email;
       if (!email) throw new Error("No email associated with this member");
 
