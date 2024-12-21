@@ -12,12 +12,16 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
     const password = formData.get("password") as string;
 
     try {
+      console.log("Attempting email login with:", { email });
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Email login error:", error);
+        throw error;
+      }
 
       toast({
         title: "Login successful",
@@ -28,7 +32,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
       console.error("Email login error:", error);
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "An error occurred during login",
+        description: error instanceof Error ? error.message : "Invalid email or password",
         variant: "destructive",
       });
     }
@@ -57,9 +61,18 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         const { data, error } = await supabase.auth.signUp({
           email,
           password,
+          options: {
+            data: {
+              member_id: member.id,
+              member_number: member.member_number
+            }
+          }
         });
 
-        if (error) throw error;
+        if (error) {
+          console.error("First-time login error:", error);
+          throw error;
+        }
 
         toast({
           title: "First-time login successful",
@@ -81,7 +94,10 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
         password,
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Login error:", error);
+        throw error;
+      }
 
       toast({
         title: "Login successful",
