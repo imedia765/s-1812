@@ -11,7 +11,6 @@ import { MembershipSection } from "@/components/registration/MembershipSection";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 import { useState, useRef } from "react";
-import { signUpUser, createUserProfile, createMember, createRegistration } from "@/services/authService";
 import { supabase } from "@/integrations/supabase/client";
 
 export default function Register() {
@@ -42,24 +41,95 @@ export default function Register() {
         return;
       }
 
-      // Step 1: Create auth user and wait for session
-      const authData = await signUpUser(data.email, data.password);
-      if (!authData.user) {
-        throw new Error("Failed to create user account");
+      // Step 1: Create member record first
+      const { data: member, error: memberError } = await supabase
+        .from('members')
+        .insert({
+          full_name: data.fullName,
+          email: data.email,
+          phone: data.mobile,
+          address: data.address,
+          town: data.town,
+          postcode: data.postCode,
+          date_of_birth: data.dob,
+          gender: data.gender,
+          marital_status: data.maritalStatus,
+          collector_id: selectedCollectorId,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (memberError) {
+        console.error("Member creation error:", memberError);
+        throw new Error(memberError.message);
       }
 
-      // Step 2: Create user profile
-      await createUserProfile(authData.user.id, data.email);
+      // Step 2: Create auth user
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.fullName,
+          },
+        },
+      });
 
-      // Step 3: Create member record with family members
-      const member = await createMember({
-        ...data,
-        spouses: spousesSectionRef.current?.getSpouses(),
-        dependants: dependantsSectionRef.current?.getDependants()
-      }, selectedCollectorId);
+      if (authError) {
+        console.error("Auth creation error:", authError);
+        // Cleanup the member record if auth creation fails
+        await supabase.from('members').delete().eq('id', member.id);
+        throw new Error(authError.message);
+      }
 
-      // Step 4: Create registration record
-      await createRegistration(member.id);
+      // Step 3: Create registration record
+      const { error: registrationError } = await supabase
+        .from('registrations')
+        .insert({
+          member_id: member.id,
+          status: 'pending'
+        });
+
+      if (registrationError) {
+        console.error("Registration record creation error:", registrationError);
+        throw new Error(registrationError.message);
+      }
+
+      // Step 4: Handle family members if any
+      const spouses = spousesSectionRef.current?.getSpouses() || [];
+      const dependants = dependantsSectionRef.current?.getDependants() || [];
+
+      if (spouses.length > 0 || dependants.length > 0) {
+        const familyMembers = [
+          ...spouses.map((spouse: any) => ({
+            member_id: member.id,
+            name: spouse.name,
+            date_of_birth: spouse.dateOfBirth,
+            relationship: 'spouse'
+          })),
+          ...dependants.map((dependant: any) => ({
+            member_id: member.id,
+            name: dependant.name,
+            date_of_birth: dependant.dateOfBirth,
+            relationship: dependant.category
+          }))
+        ];
+
+        const { error: familyError } = await supabase
+          .from('family_members')
+          .insert(familyMembers);
+
+        if (familyError) {
+          console.error("Family members creation error:", familyError);
+          // Continue despite family members error, but log it
+          toast({
+            title: "Note",
+            description: "Registration successful but there was an issue adding family members. Please contact support.",
+            variant: "default",
+          });
+        }
+      }
 
       toast({
         title: "Registration successful",
@@ -71,20 +141,9 @@ export default function Register() {
     } catch (error: any) {
       console.error("Registration error:", error);
       
-      // Show a user-friendly error message
-      let errorMessage = "An error occurred during registration. Please try again.";
-      
-      if (error.message) {
-        if (error.message.includes('rate limit')) {
-          errorMessage = error.message;
-        } else if (error.message.includes('already registered')) {
-          errorMessage = "This email is already registered. Please try logging in instead.";
-        }
-      }
-      
       toast({
         title: "Registration failed",
-        description: errorMessage,
+        description: error.message || "An error occurred during registration. Please try again.",
         variant: "destructive",
       });
     } finally {
