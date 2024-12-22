@@ -146,8 +146,7 @@ export function ActivateMemberDialog({
             <label className="text-sm font-medium">Select Collector</label>
             <CollectorSelect
               collectors={collectors || []}
-              currentCollectorId=""
-              selectedCollectorId={selectedCollectorId}
+              selectedCollector={selectedCollectorId}
               onCollectorChange={setSelectedCollectorId}
             />
           </div>
