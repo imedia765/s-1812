@@ -44,10 +44,21 @@ export function TransactionsTable({ type = 'all' }: TransactionsTableProps) {
   const handleApprove = async (paymentId: string) => {
     try {
       // Get user's profile to check if they're an admin
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (!user) {
+        toast({
+          title: "Authentication Error",
+          description: "You must be logged in to approve payments.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
-        .eq('id', supabase.auth.getUser())
+        .eq('id', user.id)
         .single();
 
       if (profile?.role !== 'admin') {
