@@ -5,7 +5,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { InfoIcon } from "lucide-react";
 
 interface MemberIdLoginFormProps {
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
+  onSubmit: (memberId: string, password: string) => Promise<void>;
   isLoading?: boolean;
 }
 
@@ -20,7 +20,7 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
       memberId: cleanMemberId,
       passwordLength: password.length
     });
-    await onSubmit(e);
+    await onSubmit(cleanMemberId, password);
   };
 
   return (

@@ -6,13 +6,10 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
-  const handleMemberIdSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    const memberId = (formData.get("memberId") as string).toUpperCase().trim();
-    const password = formData.get("memberPassword") as string;
-
+  const handleMemberIdSubmit = async (memberId: string, password: string) => {
     try {
+      console.log("Looking up member:", memberId);
+      
       // First, get the member details
       const { data: member, error: memberError } = await supabase
         .from('members')
@@ -22,7 +19,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
 
       if (memberError) {
         console.error('Member lookup error:', memberError);
-        throw new Error("Error checking member status");
+        throw new Error("Error checking member status. Please try again later.");
       }
 
       if (!member) {
@@ -31,6 +28,8 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
 
       // Attempt to sign in with the temp email
       const tempEmail = `${memberId.toLowerCase()}@temp.pwaburton.org`;
+      console.log("Attempting login with:", tempEmail);
+      
       const { data, error: signInError } = await supabase.auth.signInWithPassword({
         email: tempEmail,
         password: password,
@@ -77,7 +76,7 @@ export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
       console.error("Member ID login error:", error);
       toast({
         title: "Login failed",
-        description: error instanceof Error ? error.message : "Invalid Member ID or password",
+        description: error instanceof Error ? error.message : "An unexpected error occurred",
         variant: "destructive",
       });
     }
