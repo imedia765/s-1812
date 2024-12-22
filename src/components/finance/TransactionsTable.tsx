@@ -33,19 +33,44 @@ export function TransactionsTable({ type = 'all' }: TransactionsTableProps) {
       
       const { data, error } = await query.limit(10);
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching transactions:', error);
+        throw error;
+      }
       return data || [];
     },
   });
 
   const handleApprove = async (paymentId: string) => {
     try {
+      // Get user's profile to check if they're an admin
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', supabase.auth.getUser())
+        .single();
+
+      if (profile?.role !== 'admin') {
+        toast({
+          title: "Unauthorized",
+          description: "Only administrators can approve payments.",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const { error } = await supabase
         .from('payments')
-        .update({ status: 'approved' })
+        .update({ 
+          status: 'approved',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', paymentId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error approving payment:', error);
+        throw error;
+      }
 
       toast({
         title: "Payment approved",
@@ -86,7 +111,7 @@ export function TransactionsTable({ type = 'all' }: TransactionsTableProps) {
         </TableRow>
       </TableHeader>
       <TableBody>
-        {transactions.map((transaction) => (
+        {transactions?.map((transaction) => (
           <TableRow key={transaction.id}>
             <TableCell>{transaction.member?.full_name || transaction.notes || 'Unknown Member'}</TableCell>
             <TableCell>{transaction.payment_type}</TableCell>
