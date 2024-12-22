@@ -72,10 +72,7 @@ export function TransactionsTable({ type = 'all' }: TransactionsTableProps) {
 
       const { error } = await supabase
         .from('payments')
-        .update({ 
-          status: 'approved',
-          updated_at: new Date().toISOString()
-        })
+        .update({ status: 'approved' })
         .eq('id', paymentId);
 
       if (error) {
