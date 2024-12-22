@@ -43,7 +43,7 @@ export const MemberIdLoginForm = ({ onSubmit, isLoading }: MemberIdLoginFormProp
           onChange={(e) => setMemberId(e.target.value.toUpperCase().trim())}
           required
           disabled={isLoading}
-          className="uppercase"
+          className="uppercase bg-[#F1F0FB] border-gray-300 focus:border-blue-500 focus:ring-blue-500"
         />
       </div>
       <div className="space-y-2">
