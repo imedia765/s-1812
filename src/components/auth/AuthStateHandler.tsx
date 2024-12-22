@@ -88,12 +88,6 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
         case "USER_UPDATED":
           console.log("User data updated");
           break;
-          
-        case "USER_DELETED":
-          console.log("User deleted");
-          setIsLoggedIn(false);
-          navigate("/");
-          break;
 
         case "INITIAL_SESSION":
           console.log("Initial session:", session);
