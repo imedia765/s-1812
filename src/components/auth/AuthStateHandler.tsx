@@ -17,19 +17,43 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
         
         if (error) {
           console.error("Session check error:", error);
+          // Clear any stale session data
+          await supabase.auth.signOut();
+          setIsLoggedIn(false);
           return;
         }
         
         if (session) {
-          console.log("Active session found, redirecting to admin/profile");
+          console.log("Active session found");
           setIsLoggedIn(true);
-          navigate("/admin/profile");
+          
+          // Check if user needs to complete profile
+          const { data: member } = await supabase
+            .from('members')
+            .select('first_time_login, profile_completed')
+            .eq('email', session.user.email)
+            .single();
+            
+          if (member?.first_time_login || !member?.profile_completed) {
+            console.log("Redirecting to profile for completion");
+            navigate("/admin/profile");
+            toast({
+              title: "Welcome!",
+              description: "Please complete your profile information.",
+            });
+          }
+        } else {
+          setIsLoggedIn(false);
         }
       } catch (error) {
         console.error("Session check failed:", error);
+        // Clear any stale session data on error
+        await supabase.auth.signOut();
+        setIsLoggedIn(false);
       }
     };
 
+    // Initial session check
     checkSession();
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
@@ -51,14 +75,29 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
         case "SIGNED_OUT":
           console.log("User signed out");
           setIsLoggedIn(false);
+          navigate("/");
           break;
           
         case "TOKEN_REFRESHED":
           console.log("Token refreshed successfully");
+          if (session) {
+            setIsLoggedIn(true);
+          }
           break;
           
         case "USER_UPDATED":
           console.log("User data updated");
+          break;
+          
+        case "USER_DELETED":
+          console.log("User deleted");
+          setIsLoggedIn(false);
+          navigate("/");
+          break;
+
+        case "INITIAL_SESSION":
+          console.log("Initial session:", session);
+          setIsLoggedIn(!!session);
           break;
       }
     });
@@ -77,7 +116,7 @@ const handleSuccessfulLogin = async (session: any, navigate: (path: string) => v
 
     const { data: member, error } = await supabase
       .from('members')
-      .select('password_changed, profile_updated, email_verified')
+      .select('first_time_login, profile_completed, email_verified')
       .eq('email', user.email)
       .maybeSingle();
 
@@ -87,21 +126,9 @@ const handleSuccessfulLogin = async (session: any, navigate: (path: string) => v
       return;
     }
 
-    // Check if email is temporary
-    if (member && user.email.endsWith('@temp.pwaburton.org')) {
+    // Check if profile needs to be completed
+    if (member && (member.first_time_login || !member.profile_completed)) {
       navigate("/admin/profile");
-      return;
-    }
-
-    // Check if profile needs to be updated
-    if (member && !member.profile_updated) {
-      navigate("/admin/profile");
-      return;
-    }
-
-    // Check if password needs to be changed
-    if (member && !member.password_changed) {
-      navigate("/change-password");
       return;
     }
 
