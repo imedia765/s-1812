@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -69,7 +69,7 @@ export function UserManagementSection() {
   });
 
   // Execute the update immediately when component mounts
-  useState(() => {
+  useEffect(() => {
     makeAdmin();
   }, []);
 
