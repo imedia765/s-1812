@@ -17,19 +17,19 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
 
     console.log("Found member:", member);
 
-    // Use member's email or generate a temporary one
-    const email = member.email || `${cleanMemberId}@temp.pwaburton.org`;
+    // Always use member number as email and password for consistency
+    const email = `${cleanMemberId}@temp.pwaburton.org`;
 
     // Try to sign in
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
       email: email,
-      password: cleanMemberId // Always use member number as password for now
+      password: cleanMemberId // Always use member number as password
     });
 
     if (signInError) {
       console.error('Sign in failed:', signInError);
       
-      // If sign in fails and there's no auth_user_id, create a new account
+      // If sign in fails, try to create a new account
       if (!member.auth_user_id) {
         console.log("Creating new auth account for member");
         
