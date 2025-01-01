@@ -17,8 +17,7 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
         
         if (error) {
           console.error("Session check error:", error);
-          setIsLoggedIn(false);
-          navigate("/login");
+          await handleAuthError(error);
           return;
         }
         
@@ -30,14 +29,37 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
           }
         } else {
           console.log("No active session");
-          setIsLoggedIn(false);
-          if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
-            navigate("/login");
-          }
+          await handleNoSession();
         }
       } catch (error) {
         console.error("Session check failed:", error);
-        setIsLoggedIn(false);
+        await handleAuthError(error);
+      }
+    };
+
+    const handleAuthError = async (error: any) => {
+      console.error("Auth error:", error);
+      
+      // Clear any invalid session data
+      await supabase.auth.signOut();
+      setIsLoggedIn(false);
+      
+      if (error.message?.includes("refresh_token_not_found")) {
+        toast({
+          title: "Session expired",
+          description: "Please log in again",
+          variant: "destructive",
+        });
+      }
+      
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
+        navigate("/login");
+      }
+    };
+
+    const handleNoSession = async () => {
+      setIsLoggedIn(false);
+      if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
         navigate("/login");
       }
     };
@@ -71,8 +93,7 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
           if (session?.access_token && session?.refresh_token) {
             setIsLoggedIn(true);
           } else {
-            setIsLoggedIn(false);
-            navigate("/login");
+            await handleNoSession();
           }
           break;
           
@@ -88,10 +109,7 @@ export const useAuthStateHandler = (setIsLoggedIn: (value: boolean) => void) => 
           if (session?.access_token && session?.refresh_token) {
             setIsLoggedIn(true);
           } else {
-            setIsLoggedIn(false);
-            if (window.location.pathname !== "/login" && window.location.pathname !== "/register") {
-              navigate("/login");
-            }
+            await handleNoSession();
           }
           break;
       }
