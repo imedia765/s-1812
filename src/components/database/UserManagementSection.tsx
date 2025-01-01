@@ -5,10 +5,41 @@ import { supabase } from "@/integrations/supabase/client";
 import { UserSearch } from "./UserSearch";
 import { UserList } from "./UserList";
 import { Member } from "@/types/member";
+import { useToast } from "@/components/ui/use-toast";
 
 export function UserManagementSection() {
   const [searchTerm, setSearchTerm] = useState("");
   const [updating, setUpdating] = useState<string | null>(null);
+  const { toast } = useToast();
+
+  // Initial update for TM10003
+  const makeAdmin = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('members')
+        .update({ role: 'admin' })
+        .eq('member_number', 'TM10003')
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast({
+        title: "Role Updated",
+        description: "User TM10003 has been made an admin",
+      });
+
+      // Refetch the data
+      refetch();
+    } catch (error) {
+      console.error('Error updating role:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update user role",
+        variant: "destructive",
+      });
+    }
+  };
 
   const { data: users, refetch } = useQuery({
     queryKey: ['members', searchTerm],
@@ -19,11 +50,9 @@ export function UserManagementSection() {
         .order('created_at', { ascending: false });
 
       if (searchTerm) {
-        // Only search email with ilike, and only match role if it exactly matches one of the valid roles
         if (['member', 'collector', 'admin'].includes(searchTerm.toLowerCase())) {
           query = query.or(`email.ilike.%${searchTerm}%,role.eq.${searchTerm.toLowerCase()}`);
         } else {
-          // If search term isn't a valid role, only search in email
           query = query.ilike('email', `%${searchTerm}%`);
         }
       }
@@ -38,6 +67,11 @@ export function UserManagementSection() {
       return members as Member[];
     },
   });
+
+  // Execute the update immediately when component mounts
+  useState(() => {
+    makeAdmin();
+  }, []);
 
   return (
     <Card>
