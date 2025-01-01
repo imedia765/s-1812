@@ -1,88 +1,101 @@
-import { supabase } from "@/integrations/supabase/client";
-import { useToast } from "@/components/ui/use-toast";
 import { useNavigate } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { getMemberByMemberId } from "@/utils/memberAuth";
 
-export const useLoginHandlers = (setIsLoggedIn: (value: boolean) => void) => {
-  const { toast } = useToast();
-  const navigate = useNavigate();
-
-  const handleMemberIdSubmit = async (memberId: string, password: string) => {
-    try {
-      console.log("Looking up member:", memberId);
-      
-      // First, get the member details
-      const { data: member, error: memberError } = await supabase
-        .from('members')
-        .select('id, email, default_password_hash, password_changed, auth_user_id')
-        .eq('member_number', memberId)
-        .maybeSingle();
-
-      if (memberError) {
-        console.error('Member lookup error:', memberError);
-        throw new Error("Error checking member status. Please try again later.");
-      }
-
-      if (!member) {
-        throw new Error("Invalid Member ID. Please check your credentials and try again.");
-      }
-
-      // Attempt to sign in with the temp email
-      const tempEmail = `${memberId.toLowerCase()}@temp.pwaburton.org`;
-      console.log("Attempting login with:", tempEmail);
-      
-      const { data, error: signInError } = await supabase.auth.signInWithPassword({
-        email: tempEmail,
-        password: password,
-      });
-
-      if (signInError) {
-        console.error('Sign in error:', signInError);
-        if (signInError.message.includes('Invalid login credentials')) {
-          throw new Error("Invalid Member ID or password. Please try again.");
-        }
-        throw signInError;
-      }
-
-      // Update auth_user_id if not set
-      if (!member.auth_user_id && data.user) {
-        const { error: updateError } = await supabase
-          .from('members')
-          .update({ 
-            auth_user_id: data.user.id,
-            email_verified: true,
-            profile_updated: true
-          })
-          .eq('id', member.id);
-
-        if (updateError) {
-          console.error('Error updating auth_user_id:', updateError);
-        }
-      }
-
-      // Check if password needs to be changed
-      if (!member.password_changed) {
-        navigate("/change-password");
-        return;
-      }
-
-      toast({
-        title: "Login successful",
-        description: "Welcome back!",
-      });
-      
-      setIsLoggedIn(true);
-      navigate("/admin/profile");
-    } catch (error) {
-      console.error("Member ID login error:", error);
-      toast({
-        title: "Login failed",
-        description: error instanceof Error ? error.message : "An unexpected error occurred",
-        variant: "destructive",
-      });
+export async function handleMemberIdLogin(memberId: string, password: string, navigate: ReturnType<typeof useNavigate>) {
+  try {
+    const cleanMemberId = memberId.toUpperCase().trim();
+    console.log("Attempting login with member_number:", cleanMemberId);
+    
+    // First, look up the member
+    const member = await getMemberByMemberId(cleanMemberId);
+    
+    if (!member) {
+      console.error("Member lookup failed:", { member_number: cleanMemberId });
+      throw new Error("Member ID not found");
     }
-  };
 
-  return {
-    handleMemberIdSubmit,
-  };
-};
+    console.log("Found member:", member);
+
+    // Use member's email or generate a temporary one
+    const email = member.email || `${cleanMemberId}@temp.pwaburton.org`;
+
+    // Try to sign in first
+    const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+      email: email,
+      password: cleanMemberId
+    });
+
+    // If sign in fails and there's no auth_user_id, create a new account
+    if (signInError && !member.auth_user_id) {
+      console.log("Sign in failed and no auth account exists, creating new one");
+      
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: email,
+        password: cleanMemberId,
+        options: {
+          data: {
+            member_number: cleanMemberId
+          }
+        }
+      });
+
+      if (signUpError) {
+        console.error('Error creating auth account:', signUpError);
+        throw new Error("Failed to create account. Please try again or contact support.");
+      }
+
+      if (!signUpData.user) {
+        throw new Error("Failed to create auth account");
+      }
+
+      // Link the auth account to the member record
+      const { error: updateError } = await supabase
+        .from('members')
+        .update({ 
+          auth_user_id: signUpData.user.id,
+          email_verified: true
+        })
+        .eq('member_number', cleanMemberId);
+
+      if (updateError) {
+        console.error('Error linking auth account:', updateError);
+        throw new Error("Account created but failed to update member record");
+      }
+
+      // Try signing in with the new account
+      const { data: newSignInData, error: newSignInError } = await supabase.auth.signInWithPassword({
+        email: email,
+        password: cleanMemberId
+      });
+
+      if (newSignInError) {
+        console.error('Error signing in with new account:', newSignInError);
+        throw new Error("Account created but unable to sign in. Please try again.");
+      }
+
+      console.log("Successfully created and signed in with new account");
+      navigate("/admin");
+      return;
+    }
+
+    // If sign in failed but auth_user_id exists, credentials are wrong
+    if (signInError && member.auth_user_id) {
+      console.error('Sign in failed for existing account:', signInError);
+      throw new Error("Invalid credentials. Please try again or contact support.");
+    }
+
+    // If we got here with signInData, the original sign in was successful
+    if (signInData?.user) {
+      console.log("Login successful with existing account");
+      navigate("/admin");
+      return;
+    }
+
+    throw new Error("Login failed. Please contact support.");
+
+  } catch (error) {
+    console.error('Authentication error:', error);
+    throw error;
+  }
+}
