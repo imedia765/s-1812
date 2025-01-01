@@ -17,7 +17,7 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
 
     console.log("Found member:", member);
 
-    // Always use member number as email and password for consistency
+    // Always use member number as email for consistency
     const email = `${cleanMemberId}@temp.pwaburton.org`;
 
     // Try to sign in
@@ -58,7 +58,10 @@ export async function handleMemberIdLogin(memberId: string, password: string, na
           .update({ 
             auth_user_id: signUpData.user.id,
             email_verified: true,
-            email: email
+            email: email,
+            profile_updated: true,
+            password_changed: false,
+            first_time_login: true
           })
           .eq('member_number', cleanMemberId);
 
