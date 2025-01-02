@@ -147,6 +147,134 @@ export type Database = {
         }
         Relationships: []
       }
+      members_collectors: {
+        Row: {
+          collector_profile_id: string
+          created_at: string
+          id: string
+          member_profile_id: string
+          updated_at: string
+        }
+        Insert: {
+          collector_profile_id: string
+          created_at?: string
+          id?: string
+          member_profile_id: string
+          updated_at?: string
+        }
+        Update: {
+          collector_profile_id?: string
+          created_at?: string
+          id?: string
+          member_profile_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_collectors_collector_profile_id_fkey"
+            columns: ["collector_profile_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "members_collectors_member_profile_id_fkey"
+            columns: ["member_profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      members_roles: {
+        Row: {
+          created_at: string
+          id: string
+          profile_id: string
+          role: Database["public"]["Enums"]["user_role"]
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          profile_id: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          profile_id?: string
+          role?: Database["public"]["Enums"]["user_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "members_roles_profile_id_fkey"
+            columns: ["profile_id"]
+            isOneToOne: true
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          address: string | null
+          auth_user_id: string
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          full_name: string
+          gender: string | null
+          id: string
+          marital_status: string | null
+          member_number: string
+          membership_type: string | null
+          phone: string | null
+          postcode: string | null
+          status: string | null
+          town: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          auth_user_id: string
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name: string
+          gender?: string | null
+          id?: string
+          marital_status?: string | null
+          member_number: string
+          membership_type?: string | null
+          phone?: string | null
+          postcode?: string | null
+          status?: string | null
+          town?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          auth_user_id?: string
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string
+          gender?: string | null
+          id?: string
+          marital_status?: string | null
+          member_number?: string
+          membership_type?: string | null
+          phone?: string | null
+          postcode?: string | null
+          status?: string | null
+          town?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

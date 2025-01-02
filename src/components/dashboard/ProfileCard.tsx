@@ -2,24 +2,10 @@ import { Card } from "@/components/ui/card";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-
-interface ProfileData {
-  id: string;
-  member_number: string;
-  full_name: string;
-  email: string | null;
-  phone: string | null;
-  address: string | null;
-  town: string | null;
-  postcode: string | null;
-  status: string | null;
-  role: string;
-  membership_type: string | null;
-  date_of_birth: string | null;
-}
+import { Profile } from "@/integrations/supabase/types";
 
 interface ProfileCardProps {
-  profile: ProfileData | null;
+  profile: Profile | null;
   isLoading: boolean;
 }
 
@@ -66,10 +52,6 @@ export const ProfileCard = ({ profile, isLoading }: ProfileCardProps) => {
           <div>
             <p className="text-sm text-muted-foreground">Member Number</p>
             <p className="font-medium">{profile.member_number}</p>
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">Role</p>
-            <p className="font-medium capitalize">{profile.role}</p>
           </div>
           <div>
             <p className="text-sm text-muted-foreground">Email</p>
