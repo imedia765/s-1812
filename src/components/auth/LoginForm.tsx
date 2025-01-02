@@ -48,8 +48,15 @@ export const LoginForm = () => {
         throw new Error('Failed to sign in');
       }
 
-      // Update auth_user_id if not set
-      if (!memberData[0].auth_user_id) {
+      // Get the member's current auth_user_id
+      const { data: currentMember, error: memberError } = await supabase
+        .from('members')
+        .select('auth_user_id')
+        .eq('member_number', memberNumber)
+        .single();
+
+      if (!memberError && (!currentMember?.auth_user_id || currentMember.auth_user_id !== signInData.user.id)) {
+        // Update auth_user_id only if it's not set or different
         const { error: updateError } = await supabase
           .from('members')
           .update({ auth_user_id: signInData.user.id })
