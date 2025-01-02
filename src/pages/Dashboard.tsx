@@ -2,12 +2,19 @@ import { DashboardLayout } from "@/components/layouts/DashboardLayout";
 import { Card } from "@/components/ui/card";
 import { ProfileCard } from "@/components/dashboard/ProfileCard";
 import { useProfile } from "@/hooks/useProfile";
+import { useToast } from "@/components/ui/use-toast";
 
 const Dashboard = () => {
   const { data: profile, isLoading, error } = useProfile();
+  const { toast } = useToast();
 
   if (error) {
     console.error("Dashboard error:", error);
+    toast({
+      variant: "destructive",
+      title: "Error",
+      description: "Failed to load profile data. Please try again later.",
+    });
     return (
       <DashboardLayout>
         <div className="p-8">
