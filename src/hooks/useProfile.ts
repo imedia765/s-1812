@@ -32,16 +32,11 @@ export const useProfile = () => {
         .from("members")
         .select()
         .eq("member_number", memberNumber)
-        .maybeSingle();
+        .single();
 
       if (error) {
         console.error("Profile fetch error:", error);
         throw error;
-      }
-
-      if (!data) {
-        console.log("No profile found for member number:", memberNumber);
-        return null;
       }
 
       console.log("Found profile:", data);
