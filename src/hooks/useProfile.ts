@@ -18,20 +18,13 @@ export const useProfile = () => {
         throw new Error("No user found");
       }
 
-      // Get member_number from user metadata
-      const memberNumber = session.user.user_metadata?.member_number;
-      if (!memberNumber) {
-        console.log("No member number found in metadata");
-        throw new Error("No member number found");
-      }
+      console.log("Fetching profile for user:", session.user.id);
 
-      console.log("Fetching profile for member number:", memberNumber);
-
-      // Fetch profile by member_number
+      // Fetch profile by auth_user_id instead of member_number
       const { data, error } = await supabase
         .from("members")
         .select()
-        .eq("member_number", memberNumber)
+        .eq("auth_user_id", session.user.id)
         .single();
 
       if (error) {
