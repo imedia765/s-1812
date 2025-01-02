@@ -321,6 +321,13 @@ export type Database = {
         }
         Returns: Database["public"]["Enums"]["user_role"]
       }
+      link_member_with_auth: {
+        Args: {
+          p_member_number: string
+          p_auth_user_id: string
+        }
+        Returns: undefined
+      }
     }
     Enums: {
       user_role: "member" | "collector" | "admin"
