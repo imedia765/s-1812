@@ -5,46 +5,47 @@ export const useProfile = () => {
   return useQuery({
     queryKey: ["profile"],
     queryFn: async () => {
-      try {
-        // Get current session
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session?.user) {
-          console.log("No authenticated session found");
-          throw new Error("No user found");
-        }
-
-        // Get member_number from user metadata
-        const memberNumber = session.user.user_metadata?.member_number;
-        if (!memberNumber) {
-          console.log("No member number found in metadata");
-          throw new Error("No member number found");
-        }
-
-        console.log("Fetching profile for member number:", memberNumber);
-
-        // Fetch profile by member_number
-        const { data, error } = await supabase
-          .from("members")
-          .select("*")
-          .eq("member_number", memberNumber)
-          .maybeSingle();
-
-        if (error) {
-          console.error("Profile fetch error:", error);
-          throw error;
-        }
-
-        if (!data) {
-          console.log("No profile found for member number:", memberNumber);
-          return null;
-        }
-
-        console.log("Found profile:", data);
-        return data;
-      } catch (err) {
-        console.error("Error in profile query:", err);
-        throw err;
+      // Get current session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError) {
+        console.error("Session error:", sessionError);
+        throw new Error("Failed to get session");
       }
+
+      if (!session?.user) {
+        console.log("No authenticated session found");
+        throw new Error("No user found");
+      }
+
+      // Get member_number from user metadata
+      const memberNumber = session.user.user_metadata?.member_number;
+      if (!memberNumber) {
+        console.log("No member number found in metadata");
+        throw new Error("No member number found");
+      }
+
+      console.log("Fetching profile for member number:", memberNumber);
+
+      // Fetch profile by member_number
+      const { data, error } = await supabase
+        .from("members")
+        .select()
+        .eq("member_number", memberNumber)
+        .maybeSingle();
+
+      if (error) {
+        console.error("Profile fetch error:", error);
+        throw error;
+      }
+
+      if (!data) {
+        console.log("No profile found for member number:", memberNumber);
+        return null;
+      }
+
+      console.log("Found profile:", data);
+      return data;
     },
     retry: 1,
     staleTime: 30000, // Cache for 30 seconds
