@@ -39,20 +39,20 @@ const LoginForm = () => {
       console.log('Member found:', member);
 
       // Generate consistent email and password from member number
-      // Using @temp.pwaburton.org domain for consistency
       const formattedMemberNumber = memberNumber.toLowerCase();
       const email = `${formattedMemberNumber}@temp.pwaburton.org`;
-      const password = memberNumber;
+      const password = formattedMemberNumber; // Use lowercase member number as password
 
-      // Try to sign in first, regardless of auth_user_id
-      console.log('Attempting to sign in first');
+      console.log('Attempting authentication with:', { email });
+
+      // Try to sign in first
       const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
 
       if (!signInError && signInData.user) {
-        console.log('Sign in successful');
+        console.log('Sign in successful:', signInData.user.id);
         
         // If member doesn't have auth_user_id, update it
         if (!member.auth_user_id) {
@@ -64,7 +64,6 @@ const LoginForm = () => {
 
           if (updateError) {
             console.error('Error updating member with auth_user_id:', updateError);
-            // Don't throw as login was successful
           }
         }
       } else if (signInError && !member.auth_user_id) {
@@ -112,7 +111,7 @@ const LoginForm = () => {
       console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: error.message,
+        description: error.message || "Invalid credentials",
         variant: "destructive",
       });
     } finally {
