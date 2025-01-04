@@ -1,96 +1,151 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useToast } from "@/components/ui/use-toast";
-import { supabase } from "@/integrations/supabase/client";
+import { useToast } from "@/hooks/use-toast";
 
-export const LoginForm = () => {
-  const [memberNumber, setMemberNumber] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const { toast } = useToast();
+const LoginForm = () => {
+  const [memberNumber, setMemberNumber] = useState('');
+  const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
-    console.log("Starting login process with member number:", memberNumber);
+    setLoading(true);
 
     try {
-      // First verify member credentials using RPC
-      const { data: memberData, error: rpcError } = await supabase.rpc('authenticate_member', {
-        p_member_number: memberNumber,
-        p_password: password
-      });
-
-      if (rpcError) {
-        console.error("RPC Error:", rpcError);
-        throw new Error('Invalid credentials');
-      }
-
-      if (!memberData || memberData.length === 0) {
-        console.error("No member data returned");
-        throw new Error('Invalid credentials');
-      }
-
-      console.log("Member authenticated:", memberData);
-
-      // Sign in with member number
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email: `${memberNumber}@member.com`,
-        password: memberNumber
-      });
-
-      if (signInError) {
-        console.error("Sign in error:", signInError);
-        throw new Error('Failed to sign in');
-      }
-
-      toast({
-        title: "Success",
-        description: "Logged in successfully",
-      });
+      console.log('Starting login process for member:', memberNumber);
       
-      navigate("/dashboard");
-    } catch (error: any) {
-      console.error("Login error:", error);
+      // First, verify member exists
+      const { data: members, error: memberError } = await supabase
+        .from('members')
+        .select('id, member_number, auth_user_id')
+        .eq('member_number', memberNumber)
+        .limit(1);
+
+      if (memberError) {
+        console.error('Member verification error:', memberError);
+        throw memberError;
+      }
+
+      if (!members || members.length === 0) {
+        console.error('Member not found');
+        throw new Error('Member not found');
+      }
+
+      const member = members[0];
+      console.log('Member found:', member);
+
+      // Generate consistent email and password from member number
+      const email = `${memberNumber.toLowerCase()}@temp.com`;
+      const password = memberNumber;
+
+      // Try to sign in first, regardless of auth_user_id
+      console.log('Attempting to sign in first');
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (!signInError && signInData.user) {
+        console.log('Sign in successful');
+        
+        // If member doesn't have auth_user_id, update it
+        if (!member.auth_user_id) {
+          console.log('Updating member with auth_user_id');
+          const { error: updateError } = await supabase
+            .from('members')
+            .update({ auth_user_id: signInData.user.id })
+            .eq('id', member.id);
+
+          if (updateError) {
+            console.error('Error updating member with auth_user_id:', updateError);
+            // Don't throw as login was successful
+          }
+        }
+      } else if (signInError && !member.auth_user_id) {
+        // Only try to sign up if sign in failed and member has no auth_user_id
+        console.log('Sign in failed, creating new account');
+        const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            data: {
+              member_number: memberNumber,
+            }
+          }
+        });
+
+        if (signUpError) {
+          console.error('Sign up error:', signUpError);
+          throw signUpError;
+        }
+
+        if (signUpData.user) {
+          console.log('New account created, updating member record');
+          const { error: updateError } = await supabase
+            .from('members')
+            .update({ auth_user_id: signUpData.user.id })
+            .eq('id', member.id);
+
+          if (updateError) {
+            console.error('Error updating member with auth_user_id:', updateError);
+            throw updateError;
+          }
+        }
+      } else {
+        // If sign in failed and member has auth_user_id, throw error
+        throw signInError;
+      }
+
       toast({
-        title: "Error",
-        description: error.message || "Failed to login",
+        title: "Login successful",
+        description: "Welcome back!",
+      });
+
+      navigate('/');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      toast({
+        title: "Login failed",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
-      setIsLoading(false);
+      setLoading(false);
     }
   };
 
   return (
-    <form onSubmit={handleLogin} className="space-y-4 w-full max-w-sm">
-      <div className="space-y-2">
-        <Label htmlFor="memberNumber">Member Number</Label>
-        <Input
-          id="memberNumber"
-          type="text"
-          value={memberNumber}
-          onChange={(e) => setMemberNumber(e.target.value)}
-          required
-        />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="password">Password</Label>
-        <Input
-          id="password"
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          required
-        />
-      </div>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? "Logging in..." : "Login"}
-      </Button>
-    </form>
+    <div className="bg-dashboard-card rounded-lg shadow-lg p-8 mb-12">
+      <form onSubmit={handleLogin} className="space-y-6 max-w-md mx-auto">
+        <div>
+          <label htmlFor="memberNumber" className="block text-sm font-medium text-dashboard-text mb-2">
+            Member Number
+          </label>
+          <Input
+            id="memberNumber"
+            type="text"
+            value={memberNumber}
+            onChange={(e) => setMemberNumber(e.target.value)}
+            placeholder="Enter your member number"
+            className="w-full"
+            required
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full bg-dashboard-accent1 hover:bg-dashboard-accent1/90"
+          disabled={loading}
+        >
+          {loading ? 'Logging in...' : 'Login'}
+        </Button>
+      </form>
+    </div>
   );
 };
+
+export default LoginForm;
