@@ -39,7 +39,9 @@ const LoginForm = () => {
       console.log('Member found:', member);
 
       // Generate consistent email and password from member number
-      const email = `${memberNumber.toLowerCase()}@temp.com`;
+      // Using @temp.pwaburton.org domain for consistency
+      const formattedMemberNumber = memberNumber.toLowerCase();
+      const email = `${formattedMemberNumber}@temp.pwaburton.org`;
       const password = memberNumber;
 
       // Try to sign in first, regardless of auth_user_id
