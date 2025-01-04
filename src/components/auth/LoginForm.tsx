@@ -27,7 +27,7 @@ const LoginForm = () => {
 
       if (memberError) {
         console.error('Member verification error:', memberError);
-        throw memberError;
+        throw new Error('Error verifying member');
       }
 
       if (!members || members.length === 0) {
@@ -41,13 +41,19 @@ const LoginForm = () => {
       // Generate consistent email and password from member number
       const formattedMemberNumber = memberNumber.toLowerCase();
       const email = `${formattedMemberNumber}@temp.pwaburton.org`;
-      const password = formattedMemberNumber; // Use lowercase member number as password
+      const password = formattedMemberNumber;
 
       console.log('Attempting authentication with:', { email });
 
-      // If member doesn't have auth_user_id, try to sign up first
-      if (!member.auth_user_id) {
-        console.log('No auth_user_id found, attempting signup');
+      // First try to sign in regardless of auth_user_id status
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      // If sign in fails and there's no auth_user_id, try to sign up
+      if (signInError && !member.auth_user_id) {
+        console.log('Sign in failed, attempting signup');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -59,6 +65,10 @@ const LoginForm = () => {
         });
 
         if (signUpError) {
+          // If user already exists but sign in failed, likely password mismatch
+          if (signUpError.message.includes('already registered')) {
+            throw new Error('Invalid credentials. Please contact support.');
+          }
           console.error('Sign up error:', signUpError);
           throw signUpError;
         }
@@ -75,19 +85,11 @@ const LoginForm = () => {
             throw updateError;
           }
         }
+      } else if (signInError) {
+        // If sign in failed and member has auth_user_id, it's an invalid credentials error
+        console.error('Sign in failed:', signInError);
+        throw new Error('Invalid credentials. Please contact support.');
       } else {
-        // If member has auth_user_id, try to sign in
-        console.log('Existing auth_user_id found, attempting signin');
-        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-          email,
-          password,
-        });
-
-        if (signInError) {
-          console.error('Sign in error:', signInError);
-          throw signInError;
-        }
-
         console.log('Sign in successful:', signInData?.user?.id);
       }
 
@@ -101,7 +103,7 @@ const LoginForm = () => {
       console.error('Login error:', error);
       toast({
         title: "Login failed",
-        description: error.message || "Invalid credentials",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
       });
     } finally {
