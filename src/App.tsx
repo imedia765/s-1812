@@ -15,7 +15,6 @@ function AuthWrapper() {
   useEffect(() => {
     let isSubscribed = true;
 
-    // First check for existing session
     const checkSession = async () => {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -26,13 +25,24 @@ function AuthWrapper() {
           return;
         }
 
-        if (session) {
-          console.log('Existing session found:', session.user.id);
-          queryClient.invalidateQueries();
-        } else {
+        if (!session) {
           console.log('No session found, redirecting to login');
           navigate('/login');
+          return;
         }
+
+        // If we have a session, verify it's still valid
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user) {
+          console.error('Session invalid:', userError);
+          await supabase.auth.signOut();
+          navigate('/login');
+          return;
+        }
+
+        console.log('Valid session found:', user.id);
+        queryClient.invalidateQueries();
       } catch (error) {
         console.error('Session check failed:', error);
         navigate('/login');
@@ -41,7 +51,6 @@ function AuthWrapper() {
 
     checkSession();
 
-    // Then set up the auth state change listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (!isSubscribed) return;
       
@@ -51,17 +60,17 @@ function AuthWrapper() {
         console.log('User signed in:', session?.user?.id);
         queryClient.invalidateQueries();
         navigate('/');
-      } else if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
-        console.log('User signed out or token refreshed');
+      } else if (event === 'SIGNED_OUT') {
+        console.log('User signed out');
         queryClient.invalidateQueries();
-        
-        if (event === 'SIGNED_OUT') {
-          navigate('/login');
-          toast({
-            title: "Signed out",
-            description: "You have been signed out successfully.",
-          });
-        }
+        navigate('/login');
+        toast({
+          title: "Signed out",
+          description: "You have been signed out successfully.",
+        });
+      } else if (event === 'TOKEN_REFRESHED') {
+        console.log('Token refreshed');
+        queryClient.invalidateQueries();
       }
     });
 
