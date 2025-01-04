@@ -22,7 +22,7 @@ const LoginForm = () => {
       const { data: members, error: memberError } = await supabase
         .from('members')
         .select('id, member_number, auth_user_id')
-        .eq('member_number', memberNumber)
+        .eq('member_number', memberNumber.toUpperCase())
         .limit(1);
 
       if (memberError) {
@@ -45,36 +45,15 @@ const LoginForm = () => {
 
       console.log('Attempting authentication with:', { email });
 
-      // Try to sign in first
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      if (!signInError && signInData.user) {
-        console.log('Sign in successful:', signInData.user.id);
-        
-        // If member doesn't have auth_user_id, update it
-        if (!member.auth_user_id) {
-          console.log('Updating member with auth_user_id');
-          const { error: updateError } = await supabase
-            .from('members')
-            .update({ auth_user_id: signInData.user.id })
-            .eq('id', member.id);
-
-          if (updateError) {
-            console.error('Error updating member with auth_user_id:', updateError);
-          }
-        }
-      } else if (signInError && !member.auth_user_id) {
-        // Only try to sign up if sign in failed and member has no auth_user_id
-        console.log('Sign in failed, creating new account');
+      // If member doesn't have auth_user_id, try to sign up first
+      if (!member.auth_user_id) {
+        console.log('No auth_user_id found, attempting signup');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
           options: {
             data: {
-              member_number: memberNumber,
+              member_number: memberNumber.toUpperCase(),
             }
           }
         });
@@ -97,8 +76,19 @@ const LoginForm = () => {
           }
         }
       } else {
-        // If sign in failed and member has auth_user_id, throw error
-        throw signInError;
+        // If member has auth_user_id, try to sign in
+        console.log('Existing auth_user_id found, attempting signin');
+        const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+          email,
+          password,
+        });
+
+        if (signInError) {
+          console.error('Sign in error:', signInError);
+          throw signInError;
+        }
+
+        console.log('Sign in successful:', signInData?.user?.id);
       }
 
       toast({
