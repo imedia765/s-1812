@@ -45,15 +45,9 @@ const LoginForm = () => {
 
       console.log('Attempting authentication with:', { email });
 
-      // First try to sign in regardless of auth_user_id status
-      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-        email,
-        password,
-      });
-
-      // If sign in fails and there's no auth_user_id, try to sign up
-      if (signInError && !member.auth_user_id) {
-        console.log('Sign in failed, attempting signup');
+      // Try to sign up first if no auth_user_id exists
+      if (!member.auth_user_id) {
+        console.log('No auth_user_id found, attempting signup');
         const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
           email,
           password,
@@ -65,16 +59,15 @@ const LoginForm = () => {
         });
 
         if (signUpError) {
-          // If user already exists but sign in failed, likely password mismatch
+          // If signup fails because user exists, proceed to sign in
           if (signUpError.message.includes('already registered')) {
-            throw new Error('Invalid credentials. Please contact support.');
+            console.log('User already exists, proceeding to sign in');
+          } else {
+            console.error('Sign up error:', signUpError);
+            throw signUpError;
           }
-          console.error('Sign up error:', signUpError);
-          throw signUpError;
-        }
-
-        if (signUpData.user) {
-          console.log('New account created, updating member record');
+        } else if (signUpData.user) {
+          // Update member with new auth_user_id
           const { error: updateError } = await supabase
             .from('members')
             .update({ auth_user_id: signUpData.user.id })
@@ -85,14 +78,22 @@ const LoginForm = () => {
             throw updateError;
           }
         }
-      } else if (signInError) {
-        // If sign in failed and member has auth_user_id, it's an invalid credentials error
-        console.error('Sign in failed:', signInError);
-        throw new Error('Invalid credentials. Please contact support.');
-      } else {
-        console.log('Sign in successful:', signInData?.user?.id);
       }
 
+      // Always attempt to sign in
+      const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        console.error('Sign in error:', signInError);
+        throw new Error('Invalid credentials. Please try again or contact support.');
+      }
+
+      console.log('Sign in successful:', signInData?.user?.id);
+
+      // If we got here, login was successful
       toast({
         title: "Login successful",
         description: "Welcome back!",
