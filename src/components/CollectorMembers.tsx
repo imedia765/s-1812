@@ -24,7 +24,7 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
         throw new Error('No authenticated user');
       }
 
-      // Get user's roles - Note the change here to handle multiple roles
+      // Get user's roles
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
@@ -38,31 +38,12 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
       const roles = roleData?.map(r => r.role) || [];
       console.log('User roles:', roles);
 
-      // Get collector details to verify matching
-      const { data: collectorData, error: collectorError } = await supabase
-        .from('members_collectors')
-        .select('*')
-        .eq('name', collectorName)
-        .maybeSingle(); // Changed from single() to maybeSingle()
-
-      if (collectorError) {
-        console.error('Error fetching collector details:', collectorError);
-        throw collectorError;
-      }
-
-      if (!collectorData) {
-        console.log('No collector found with name:', collectorName);
-        return []; // Return empty array if no collector found
-      }
-
-      console.log('Collector details:', collectorData);
-
-      // Fetch members with detailed logging
+      // Directly fetch members for the collector
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
         .eq('collector', collectorName)
-        .order('created_at', { ascending: false });
+        .order('member_number', { ascending: true });
       
       if (membersError) {
         console.error('Error fetching members:', membersError);
@@ -70,6 +51,8 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
       }
 
       console.log('Fetched members count:', membersData?.length);
+      console.log('Members data:', membersData);
+      
       return membersData as Member[];
     },
     meta: {
@@ -79,7 +62,6 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
 
   if (error) {
     console.error('Query error:', error);
-    // Only show toast if it's not already shown
     toast({
       title: "Error loading members",
       description: error.message,
