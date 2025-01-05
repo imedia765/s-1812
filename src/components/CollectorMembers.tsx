@@ -24,30 +24,35 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
         throw new Error('No authenticated user');
       }
 
-      // Get user's role
+      // Get user's roles - Note the change here to handle multiple roles
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
-        .eq('user_id', user.id)
-        .single();
+        .eq('user_id', user.id);
 
       if (roleError) {
-        console.error('Error fetching user role:', roleError);
+        console.error('Error fetching user roles:', roleError);
         throw roleError;
       }
 
-      console.log('User role:', roleData?.role);
+      const roles = roleData?.map(r => r.role) || [];
+      console.log('User roles:', roles);
 
       // Get collector details to verify matching
       const { data: collectorData, error: collectorError } = await supabase
         .from('members_collectors')
         .select('*')
         .eq('name', collectorName)
-        .single();
+        .maybeSingle(); // Changed from single() to maybeSingle()
 
       if (collectorError) {
         console.error('Error fetching collector details:', collectorError);
         throw collectorError;
+      }
+
+      if (!collectorData) {
+        console.log('No collector found with name:', collectorName);
+        return []; // Return empty array if no collector found
       }
 
       console.log('Collector details:', collectorData);
@@ -65,8 +70,6 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
       }
 
       console.log('Fetched members count:', membersData?.length);
-      console.log('First few members:', membersData?.slice(0, 3));
-
       return membersData as Member[];
     },
     meta: {
@@ -76,10 +79,11 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
 
   if (error) {
     console.error('Query error:', error);
+    // Only show toast if it's not already shown
     toast({
       title: "Error loading members",
       description: error.message,
-      variant: "destructive"
+      variant: "destructive",
     });
   }
 
