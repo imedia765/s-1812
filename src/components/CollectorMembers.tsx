@@ -27,21 +27,12 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
 
       console.log('User role:', roleData?.role);
 
-      // Fetch members based on role
-      const query = supabase
+      // Fetch members based on role and collector name
+      const { data, error } = await supabase
         .from('members')
-        .select('*');
-
-      if (roleData?.role === 'admin') {
-        // Admins can see all members for a specific collector
-        query.eq('collector', collectorName);
-      } else {
-        // Collectors can only see their assigned members
-        // Changed from collector_id to collector name check
-        query.eq('collector', collectorName);
-      }
-
-      const { data, error } = await query.order('created_at', { ascending: false });
+        .select('*')
+        .eq('collector', collectorName)
+        .order('created_at', { ascending: false });
       
       if (error) {
         console.error('Error fetching members:', error);
