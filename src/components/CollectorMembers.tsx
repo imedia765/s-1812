@@ -3,46 +3,85 @@ import { supabase } from "@/integrations/supabase/client";
 import { Database } from '@/integrations/supabase/types';
 import { User } from 'lucide-react';
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useToast } from "@/hooks/use-toast";
 
 type Member = Database['public']['Tables']['members']['Row'];
 
 const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
-  const { data: members, isLoading } = useQuery({
+  const { toast } = useToast();
+
+  const { data: members, isLoading, error } = useQuery({
     queryKey: ['collector_members', collectorName],
     queryFn: async () => {
       console.log('Fetching members for collector:', collectorName);
       
-      // First get the current user's role
+      // First get the current user's role and details
       const { data: { user } } = await supabase.auth.getUser();
       console.log('Current user:', user?.id);
 
-      if (!user) throw new Error('No authenticated user');
+      if (!user) {
+        console.error('No authenticated user found');
+        throw new Error('No authenticated user');
+      }
 
       // Get user's role
-      const { data: roleData } = await supabase
+      const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', user.id)
         .single();
 
+      if (roleError) {
+        console.error('Error fetching user role:', roleError);
+        throw roleError;
+      }
+
       console.log('User role:', roleData?.role);
 
-      // Fetch members based on role and collector name
-      const { data, error } = await supabase
+      // Get collector details to verify matching
+      const { data: collectorData, error: collectorError } = await supabase
+        .from('members_collectors')
+        .select('*')
+        .eq('name', collectorName)
+        .single();
+
+      if (collectorError) {
+        console.error('Error fetching collector details:', collectorError);
+        throw collectorError;
+      }
+
+      console.log('Collector details:', collectorData);
+
+      // Fetch members with detailed logging
+      const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select('*')
         .eq('collector', collectorName)
         .order('created_at', { ascending: false });
       
-      if (error) {
-        console.error('Error fetching members:', error);
-        throw error;
+      if (membersError) {
+        console.error('Error fetching members:', membersError);
+        throw membersError;
       }
 
-      console.log('Fetched members:', data);
-      return data as Member[];
+      console.log('Fetched members count:', membersData?.length);
+      console.log('First few members:', membersData?.slice(0, 3));
+
+      return membersData as Member[];
     },
+    meta: {
+      errorMessage: "Failed to fetch collector members"
+    }
   });
+
+  if (error) {
+    console.error('Query error:', error);
+    toast({
+      title: "Error loading members",
+      description: error.message,
+      variant: "destructive"
+    });
+  }
 
   if (isLoading) return <div>Loading members...</div>;
   if (!members?.length) return <div className="text-gray-400">No members assigned to this collector</div>;
