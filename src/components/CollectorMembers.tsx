@@ -13,7 +13,7 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
   const { data: members, isLoading, error } = useQuery({
     queryKey: ['collector_members', collectorName],
     queryFn: async () => {
-      console.log('Fetching members for collector:', collectorName);
+      console.log('Starting member fetch for collector:', collectorName);
       
       // First get the current user's role and details
       const { data: { user } } = await supabase.auth.getUser();
@@ -24,21 +24,8 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
         throw new Error('No authenticated user');
       }
 
-      // Get user's roles
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', user.id);
-
-      if (roleError) {
-        console.error('Error fetching user roles:', roleError);
-        throw roleError;
-      }
-
-      const roles = roleData?.map(r => r.role) || [];
-      console.log('User roles:', roles);
-
       // Directly fetch members for the collector
+      console.log('Executing members query with collector name:', collectorName);
       const { data: membersData, error: membersError } = await supabase
         .from('members')
         .select(`
@@ -58,8 +45,8 @@ const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
         throw membersError;
       }
 
-      console.log('Fetched members count:', membersData?.length);
-      console.log('Members data:', membersData);
+      console.log('Query returned members count:', membersData?.length);
+      console.log('First few members:', membersData?.slice(0, 3));
       
       return membersData as Member[];
     },
