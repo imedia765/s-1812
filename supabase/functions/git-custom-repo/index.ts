@@ -6,20 +6,12 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-interface GitOperationRequest {
-  repoId: string;
-  branch?: string;
-  commitMessage?: string;
-}
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    console.log('Custom repo git operation started');
-    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -27,7 +19,6 @@ serve(async (req) => {
 
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
-      console.error('No authorization header provided');
       throw new Error('No authorization header');
     }
 
@@ -36,19 +27,15 @@ serve(async (req) => {
     );
 
     if (authError || !user) {
-      console.error('Auth error:', authError);
       throw new Error('Invalid token');
     }
 
-    console.log('User authenticated:', user.id);
-
     const githubToken = Deno.env.get('GITHUB_PAT');
     if (!githubToken) {
-      console.error('GitHub token not configured');
-      throw new Error('GitHub token not configured in Edge Function secrets');
+      throw new Error('GitHub token not configured');
     }
 
-    const { repoId, branch = 'main', commitMessage = 'Force commit: Pushing all files' } = await req.json() as GitOperationRequest;
+    const { repoId, branch = 'main' } = await req.json();
 
     // Get repository configuration
     const { data: repoConfig, error: repoError } = await supabase
@@ -58,106 +45,81 @@ serve(async (req) => {
       .single();
 
     if (repoError || !repoConfig) {
-      console.error('Repository config error:', repoError);
       throw new Error('Repository configuration not found');
     }
 
-    console.log('Found repository config:', repoConfig);
+    // Extract owner and repo from the URL
+    const repoUrlParts = repoConfig.repo_url
+      .replace('https://github.com/', '')
+      .split('/');
+    
+    if (repoUrlParts.length !== 2) {
+      throw new Error('Invalid repository URL format');
+    }
+
+    const [owner, repo] = repoUrlParts;
 
     // Log operation start
-    const { error: logError } = await supabase
-      .from('git_operations_logs')
-      .insert({
-        operation_type: 'push',
-        status: 'started',
-        created_by: user.id,
-        message: `Starting Git push operation to ${repoConfig.repo_url}`
-      });
-
-    if (logError) {
-      console.error('Error logging operation:', logError);
-    }
-
-    const apiUrl = `https://api.github.com/repos/${repoConfig.repo_url.replace('https://github.com/', '')}/git/refs/heads/${branch}`;
-
-    console.log('Testing GitHub token...');
-    const testResponse = await fetch('https://api.github.com/user', {
-      headers: {
-        'Authorization': `token ${githubToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Supabase-Edge-Function'
-      }
+    await supabase.from('git_operations_logs').insert({
+      operation_type: 'push',
+      status: 'started',
+      created_by: user.id,
+      message: `Starting push operation to ${repoConfig.repo_url}`
     });
 
-    if (!testResponse.ok) {
-      const testResponseText = await testResponse.text();
-      console.error('GitHub token test failed:', testResponseText);
-      throw new Error(`GitHub token validation failed: ${testResponseText}`);
-    }
-
-    console.log('Fetching branch information...');
-    const response = await fetch(apiUrl, {
-      headers: {
-        'Authorization': `token ${githubToken}`,
-        'Accept': 'application/vnd.github.v3+json',
-        'User-Agent': 'Supabase-Edge-Function'
-      }
-    });
-
-    if (!response.ok) {
-      const responseText = await response.text();
-      console.error('GitHub API error:', responseText);
-      throw new Error(`GitHub API error: ${responseText}`);
-    }
-
-    const data = await response.json();
-    console.log('Current branch state:', JSON.stringify(data, null, 2));
-
-    // Update log with success
-    await supabase
-      .from('git_operations_logs')
-      .insert({
-        operation_type: 'push',
-        status: 'completed',
-        created_by: user.id,
-        message: `Successfully pushed to ${repoConfig.repo_url} on branch ${branch}`
-      });
-
-    return new Response(
-      JSON.stringify({
-        success: true,
-        message: `Successfully pushed to ${repoConfig.repo_url} on branch ${branch}`,
-        data: data
-      }),
+    // Get the latest commit SHA
+    const shaResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
       {
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 200,
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Supabase-Edge-Function'
+        }
       }
     );
+
+    if (!shaResponse.ok) {
+      throw new Error(`GitHub API error: ${await shaResponse.text()}`);
+    }
+
+    const shaData = await shaResponse.json();
+
+    // Log success
+    await supabase.from('git_operations_logs').insert({
+      operation_type: 'push',
+      status: 'completed',
+      created_by: user.id,
+      message: `Successfully retrieved latest commit SHA from ${repoConfig.repo_url}`
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, data: shaData }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
   } catch (error) {
-    console.error('Error in git-custom-repo:', error);
+    console.error('Error:', error);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     );
 
-    await supabase
-      .from('git_operations_logs')
-      .insert({
-        operation_type: 'push',
-        status: 'failed',
-        message: error instanceof Error ? error.message : 'Unknown error occurred'
-      });
+    await supabase.from('git_operations_logs').insert({
+      operation_type: 'push',
+      status: 'failed',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
 
     return new Response(
       JSON.stringify({
         success: false,
-        error: error instanceof Error ? error.message : 'Unknown error occurred'
+        error: error instanceof Error ? error.message : 'Unknown error'
       }),
       {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        status: 400,
+        status: 400
       }
     );
   }

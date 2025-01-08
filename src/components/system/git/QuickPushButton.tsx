@@ -13,14 +13,16 @@ export const QuickPushButton = ({ isProcessing }: { isProcessing: boolean }) => 
         throw new Error('No active session');
       }
 
+      console.log('Starting quick push operation...');
+
       const { data, error } = await supabase.functions.invoke('git-operations', {
-        body: {
-          branch: 'main',
-          commitMessage: 'Force commit: Pushing all files to master'
-        }
+        body: { branch: 'main' }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Quick push error:', error);
+        throw error;
+      }
 
       console.log('Quick push response:', data);
       
