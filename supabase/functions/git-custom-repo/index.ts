@@ -12,6 +12,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log('Starting custom repo git operation...');
+    
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
@@ -28,6 +30,7 @@ serve(async (req) => {
     );
 
     if (authError || !user) {
+      console.error('Auth error:', authError);
       throw new Error('Invalid token');
     }
 
@@ -59,9 +62,9 @@ serve(async (req) => {
     });
 
     // Extract owner and repo from the URL
-    const repoUrlParts = repoConfig.repo_url
+    const repoUrl = repoConfig.repo_url.replace(/\.git$/, '');
+    const repoUrlParts = repoUrl
       .replace('https://github.com/', '')
-      .replace('.git', '')
       .split('/');
     
     if (repoUrlParts.length !== 2) {
@@ -73,16 +76,12 @@ serve(async (req) => {
     console.log('Parsed repo details:', { owner, repo });
 
     // Log operation start
-    const { error: logError } = await supabase.from('git_operations_logs').insert({
+    await supabase.from('git_operations_logs').insert({
       operation_type: 'push',
       status: 'started',
       created_by: user.id,
       message: `Starting push operation to ${repoConfig.repo_url}`
     });
-
-    if (logError) {
-      console.error('Error logging operation start:', logError);
-    }
 
     // First verify the repository exists and is accessible
     const repoCheckResponse = await fetch(
