@@ -38,7 +38,7 @@ serve(async (req) => {
       throw new Error('GitHub token not configured');
     }
 
-    const { repoId } = await req.json();
+    const { repoId, commitMessage = 'Update from dashboard' } = await req.json();
     console.log('Processing request for repo ID:', repoId);
 
     // Get repository configuration
@@ -73,12 +73,16 @@ serve(async (req) => {
     console.log('Parsed repo details:', { owner, repo });
 
     // Log operation start
-    await supabase.from('git_operations_logs').insert({
+    const { error: logError } = await supabase.from('git_operations_logs').insert({
       operation_type: 'push',
       status: 'started',
       created_by: user.id,
       message: `Starting push operation to ${repoConfig.repo_url}`
     });
+
+    if (logError) {
+      console.error('Error logging operation start:', logError);
+    }
 
     // First verify the repository exists and is accessible
     const repoCheckResponse = await fetch(
@@ -95,6 +99,14 @@ serve(async (req) => {
     if (!repoCheckResponse.ok) {
       const errorData = await repoCheckResponse.text();
       console.error('Repository check failed:', errorData);
+      
+      await supabase.from('git_operations_logs').insert({
+        operation_type: 'push',
+        status: 'failed',
+        created_by: user.id,
+        message: `Repository not found or inaccessible: ${repoConfig.repo_url}`
+      });
+      
       throw new Error(`Repository check failed: ${errorData}`);
     }
 
@@ -114,15 +126,14 @@ serve(async (req) => {
       const errorData = await shaResponse.text();
       console.error('SHA fetch failed:', errorData);
       
-      // Log failure
       await supabase.from('git_operations_logs').insert({
         operation_type: 'push',
         status: 'failed',
         created_by: user.id,
-        message: `GitHub API error: ${errorData}`
+        message: `Branch ${repoConfig.branch} not found in repository ${repoConfig.repo_url}`
       });
 
-      throw new Error(`GitHub API error: ${errorData}`);
+      throw new Error(`Branch not found: ${errorData}`);
     }
 
     const shaData = await shaResponse.json();
