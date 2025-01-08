@@ -1,98 +1,122 @@
+import { useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Database } from '@/integrations/supabase/types';
-import { User } from 'lucide-react';
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/hooks/use-toast";
-
-type Member = Database['public']['Tables']['members']['Row'];
+import { Member } from "@/types/member";
+import { Loader2 } from "lucide-react";
+import { useAuthSession } from "@/hooks/useAuthSession";
 
 const CollectorMembers = ({ collectorName }: { collectorName: string }) => {
-  const { toast } = useToast();
+  const { session } = useAuthSession();
 
+  // Log authentication and role information for debugging
+  useEffect(() => {
+    const checkAuth = async () => {
+      console.log('Checking authentication and roles...');
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      console.log('Current auth user:', user);
+      
+      if (authError) {
+        console.error('Auth error:', authError);
+        return;
+      }
+      
+      if (user) {
+        const { data: roles, error: rolesError } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+          
+        if (rolesError) {
+          console.error('Error fetching roles:', rolesError);
+          return;
+        }
+        
+        console.log('User roles:', roles);
+      }
+    };
+    
+    checkAuth();
+  }, []);
+
+  // Simplified query to fetch members
   const { data: members, isLoading, error } = useQuery({
-    queryKey: ['collector_members', collectorName],
+    queryKey: ['collectorMembers', collectorName],
     queryFn: async () => {
       console.log('Starting member fetch for collector:', collectorName);
       
-      // First get the current user's role and details
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log('Current user:', user?.id);
-
-      if (!user) {
-        console.error('No authenticated user found');
-        throw new Error('No authenticated user');
-      }
-
-      // Directly fetch members for the collector
-      console.log('Executing members query with collector name:', collectorName);
-      const { data: membersData, error: membersError } = await supabase
+      const { data, error } = await supabase
         .from('members')
-        .select(`
-          id,
-          member_number,
-          full_name,
-          email,
-          phone,
-          status,
-          collector
-        `)
-        .eq('collector', collectorName)
-        .order('member_number', { ascending: true });
-      
-      if (membersError) {
-        console.error('Error fetching members:', membersError);
-        throw membersError;
+        .select('*')
+        .eq('collector', collectorName);
+
+      if (error) {
+        console.error('Error fetching members:', error);
+        throw error;
       }
 
-      console.log('Query returned members count:', membersData?.length);
-      console.log('First few members:', membersData?.slice(0, 3));
-      
-      return membersData as Member[];
+      console.log('Members data fetched:', data);
+      return data as Member[];
     },
-    meta: {
-      errorMessage: "Failed to fetch collector members"
-    }
+    enabled: !!collectorName && !!session, // Only fetch if we have both a collector name and a valid session
   });
 
-  if (error) {
-    console.error('Query error:', error);
-    toast({
-      title: "Error loading members",
-      description: error.message,
-      variant: "destructive",
-    });
+  // If no session, don't show loading state
+  if (!session) {
+    console.log('No active session, skipping member fetch');
+    return null;
   }
 
-  if (isLoading) return <div className="text-sm text-gray-400">Loading members...</div>;
-  if (!members?.length) return <div className="text-sm text-gray-400">No members assigned to this collector</div>;
-
-  return (
-    <ScrollArea className="h-[400px] w-full rounded-md">
-      <div className="space-y-2 pr-4">
-        {members.map((member) => (
-          <div 
-            key={member.id}
-            className="flex items-center gap-3 p-3 bg-black/20 rounded-lg hover:bg-black/30 transition-colors"
-          >
-            <div className="w-8 h-8 rounded-full bg-dashboard-accent1/20 flex items-center justify-center">
-              <User className="w-4 h-4 text-dashboard-accent1" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-white">{member.full_name}</p>
-              <p className="text-xs text-gray-400">Member #{member.member_number}</p>
-            </div>
-            <div className={`px-2 py-1 rounded-full text-xs ${
-              member.status === 'active' 
-                ? 'bg-green-500/20 text-green-400' 
-                : 'bg-gray-500/20 text-gray-400'
-            }`}>
-              {member.status || 'Pending'}
-            </div>
-          </div>
-        ))}
+  // Basic loading state
+  if (isLoading) {
+    console.log('Component in loading state');
+    return (
+      <div className="flex justify-center items-center p-4">
+        <Loader2 className="h-6 w-6 animate-spin" />
       </div>
-    </ScrollArea>
+    );
+  }
+
+  // Error handling
+  if (error) {
+    console.error('Component in error state:', error);
+    return (
+      <div className="p-4 text-red-500">
+        Error loading members: {error instanceof Error ? error.message : 'Unknown error'}
+      </div>
+    );
+  }
+
+  // No data state
+  if (!members || members.length === 0) {
+    console.log('No members found for collector:', collectorName);
+    return (
+      <div className="p-4 text-gray-500">
+        No members found for collector: {collectorName}
+      </div>
+    );
+  }
+
+  console.log('Rendering member list with count:', members.length);
+  
+  // Simplified member list rendering
+  return (
+    <div className="space-y-4">
+      <ul className="space-y-2">
+        {members.map((member) => (
+          <li 
+            key={member.id}
+            className="bg-dashboard-card p-4 rounded-lg border border-dashboard-cardBorder hover:border-dashboard-cardBorderHover hover:bg-dashboard-cardHover transition-all duration-300"
+          >
+            <div>
+              <p className="font-medium text-dashboard-highlight">{member.full_name}</p>
+              <p className="text-sm text-dashboard-accent2">
+                Member #: {member.member_number}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 };
 
