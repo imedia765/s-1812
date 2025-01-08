@@ -17,6 +17,7 @@ serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
     )
 
+    // Verify authentication
     const authHeader = req.headers.get('Authorization');
     if (!authHeader) {
       throw new Error('No authorization header');
@@ -30,12 +31,15 @@ serve(async (req) => {
       throw new Error('Invalid token');
     }
 
+    // Verify GitHub token
     const githubToken = Deno.env.get('GITHUB_PAT');
     if (!githubToken) {
+      console.error('GitHub PAT not configured');
       throw new Error('GitHub token not configured');
     }
 
-    const { repoId, branch = 'main' } = await req.json();
+    const { repoId } = await req.json();
+    console.log('Processing request for repo ID:', repoId);
 
     // Get repository configuration
     const { data: repoConfig, error: repoError } = await supabase
@@ -45,19 +49,28 @@ serve(async (req) => {
       .single();
 
     if (repoError || !repoConfig) {
+      console.error('Repository config error:', repoError);
       throw new Error('Repository configuration not found');
     }
+
+    console.log('Found repo config:', {
+      url: repoConfig.repo_url,
+      branch: repoConfig.branch
+    });
 
     // Extract owner and repo from the URL
     const repoUrlParts = repoConfig.repo_url
       .replace('https://github.com/', '')
+      .replace('.git', '')
       .split('/');
     
     if (repoUrlParts.length !== 2) {
+      console.error('Invalid repo URL format:', repoConfig.repo_url);
       throw new Error('Invalid repository URL format');
     }
 
     const [owner, repo] = repoUrlParts;
+    console.log('Parsed repo details:', { owner, repo });
 
     // Log operation start
     await supabase.from('git_operations_logs').insert({
@@ -67,9 +80,27 @@ serve(async (req) => {
       message: `Starting push operation to ${repoConfig.repo_url}`
     });
 
+    // First verify the repository exists and is accessible
+    const repoCheckResponse = await fetch(
+      `https://api.github.com/repos/${owner}/${repo}`,
+      {
+        headers: {
+          'Authorization': `token ${githubToken}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Supabase-Edge-Function'
+        }
+      }
+    );
+
+    if (!repoCheckResponse.ok) {
+      const errorData = await repoCheckResponse.text();
+      console.error('Repository check failed:', errorData);
+      throw new Error(`Repository check failed: ${errorData}`);
+    }
+
     // Get the latest commit SHA
     const shaResponse = await fetch(
-      `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${branch}`,
+      `https://api.github.com/repos/${owner}/${repo}/git/refs/heads/${repoConfig.branch}`,
       {
         headers: {
           'Authorization': `token ${githubToken}`,
@@ -80,10 +111,22 @@ serve(async (req) => {
     );
 
     if (!shaResponse.ok) {
-      throw new Error(`GitHub API error: ${await shaResponse.text()}`);
+      const errorData = await shaResponse.text();
+      console.error('SHA fetch failed:', errorData);
+      
+      // Log failure
+      await supabase.from('git_operations_logs').insert({
+        operation_type: 'push',
+        status: 'failed',
+        created_by: user.id,
+        message: `GitHub API error: ${errorData}`
+      });
+
+      throw new Error(`GitHub API error: ${errorData}`);
     }
 
     const shaData = await shaResponse.json();
+    console.log('Successfully retrieved SHA:', shaData);
 
     // Log success
     await supabase.from('git_operations_logs').insert({
@@ -99,7 +142,7 @@ serve(async (req) => {
     );
 
   } catch (error) {
-    console.error('Error:', error);
+    console.error('Error in git-custom-repo:', error);
 
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
