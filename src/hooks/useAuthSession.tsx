@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Session } from "@supabase/supabase-js";
+import { Session, AuthError } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from '@tanstack/react-query';
@@ -32,6 +32,27 @@ export function useAuthSession() {
     }
   };
 
+  const handleAuthError = async (error: AuthError) => {
+    console.error('Auth error:', error);
+    
+    // Handle specific auth errors
+    if (error.message.includes('refresh_token_not_found') || 
+        error.message.includes('invalid refresh token')) {
+      toast({
+        title: "Session Expired",
+        description: "Please sign in again",
+        variant: "destructive",
+      });
+      await handleSignOut();
+    } else {
+      toast({
+        title: "Authentication Error",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   useEffect(() => {
     let mounted = true;
 
@@ -40,7 +61,10 @@ export function useAuthSession() {
         setLoading(true);
         const { data: { session: currentSession }, error } = await supabase.auth.getSession();
         
-        if (error) throw error;
+        if (error) {
+          await handleAuthError(error);
+          return;
+        }
         
         if (mounted) {
           setSession(currentSession);
@@ -65,12 +89,15 @@ export function useAuthSession() {
 
       console.log('Auth state changed:', event, currentSession?.user?.id);
       
-      if (event === 'SIGNED_OUT') {
-        await handleSignOut();
-        return;
+      if (event === 'SIGNED_OUT' || event === 'TOKEN_REFRESHED') {
+        if (!currentSession) {
+          console.log('No session after token refresh, signing out');
+          await handleSignOut();
+          return;
+        }
       }
 
-      if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
+      if (event === 'SIGNED_IN') {
         setSession(currentSession);
         await queryClient.invalidateQueries();
       }
