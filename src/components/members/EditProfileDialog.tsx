@@ -43,7 +43,7 @@ const countries = [
   "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", 
   "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", 
   "Yemen", "Zambia", "Zimbabwe"
-];
+] as const;
 
 interface EditProfileDialogProps {
   member: Member;
@@ -67,7 +67,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
     country_of_birth: member.country_of_birth || ''
   });
 
-  const [open_country, setOpenCountry] = useState(false);
+  const [openCountry, setOpenCountry] = useState(false);
 
   const handleSave = async () => {
     try {
@@ -142,17 +142,15 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
             <Label htmlFor="country_of_birth" className="text-right text-dashboard-text">
               Country of Birth
             </Label>
-            <Popover open={open_country} onOpenChange={setOpenCountry}>
+            <Popover open={openCountry} onOpenChange={setOpenCountry}>
               <PopoverTrigger asChild>
                 <Button
                   variant="outline"
                   role="combobox"
-                  aria-expanded={open_country}
+                  aria-expanded={openCountry}
                   className="col-span-3 justify-between bg-dashboard-dark text-white border-dashboard-accent1/20"
                 >
-                  {formData.country_of_birth
-                    ? formData.country_of_birth
-                    : "Select country..."}
+                  {formData.country_of_birth || "Select country..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -169,6 +167,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                           setFormData({...formData, country_of_birth: currentValue});
                           setOpenCountry(false);
                         }}
+                        className="cursor-pointer"
                       >
                         <Check
                           className={cn(
