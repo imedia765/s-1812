@@ -68,7 +68,12 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
   });
 
   const [openCountry, setOpenCountry] = useState(false);
-  const [value, setValue] = useState(member.country_of_birth || "");
+  const [searchValue, setSearchValue] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState(member.country_of_birth || "");
+
+  const filteredCountries = countries.filter((country) =>
+    country.toLowerCase().includes(searchValue.toLowerCase())
+  );
 
   const handleSave = async () => {
     try {
@@ -151,21 +156,25 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                   aria-expanded={openCountry}
                   className="col-span-3 justify-between bg-dashboard-dark text-white border-dashboard-accent1/20"
                 >
-                  {value || "Select country..."}
+                  {selectedCountry || "Select country..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[400px] p-0 bg-dashboard-dark text-white">
-                <Command value={value} onValueChange={setValue}>
-                  <CommandInput placeholder="Search country..." />
+                <Command>
+                  <CommandInput 
+                    placeholder="Search country..." 
+                    value={searchValue}
+                    onValueChange={setSearchValue}
+                  />
                   <CommandEmpty>No country found.</CommandEmpty>
                   <CommandGroup>
-                    {countries.map((country) => (
+                    {filteredCountries.map((country) => (
                       <CommandItem
                         key={country}
                         value={country}
                         onSelect={(currentValue) => {
-                          setValue(currentValue);
+                          setSelectedCountry(currentValue);
                           setFormData({ ...formData, country_of_birth: currentValue });
                           setOpenCountry(false);
                         }}
@@ -173,7 +182,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                         <Check
                           className={cn(
                             "mr-2 h-4 w-4",
-                            value === country ? "opacity-100" : "opacity-0"
+                            selectedCountry === country ? "opacity-100" : "opacity-0"
                           )}
                         />
                         {country}
