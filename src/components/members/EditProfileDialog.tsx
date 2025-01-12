@@ -43,7 +43,7 @@ const countries = [
   "Trinidad and Tobago", "Tunisia", "Turkey", "Turkmenistan", "Tuvalu", "Uganda", "Ukraine", "United Arab Emirates", 
   "United Kingdom", "United States", "Uruguay", "Uzbekistan", "Vanuatu", "Vatican City", "Venezuela", "Vietnam", 
   "Yemen", "Zambia", "Zimbabwe"
-] as const;
+];
 
 interface EditProfileDialogProps {
   member: Member;
@@ -68,6 +68,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
   });
 
   const [openCountry, setOpenCountry] = useState(false);
+  const [value, setValue] = useState(member.country_of_birth || "");
 
   const handleSave = async () => {
     try {
@@ -150,7 +151,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                   aria-expanded={openCountry}
                   className="col-span-3 justify-between bg-dashboard-dark text-white border-dashboard-accent1/20"
                 >
-                  {formData.country_of_birth || "Select country..."}
+                  {value || "Select country..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
@@ -158,21 +159,21 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                 <Command>
                   <CommandInput placeholder="Search country..." className="h-9 text-white" />
                   <CommandEmpty>No country found.</CommandEmpty>
-                  <CommandGroup className="max-h-[300px] overflow-auto">
+                  <CommandGroup>
                     {countries.map((country) => (
                       <CommandItem
                         key={country}
                         value={country}
                         onSelect={(currentValue) => {
+                          setValue(currentValue);
                           setFormData({...formData, country_of_birth: currentValue});
                           setOpenCountry(false);
                         }}
-                        className="cursor-pointer"
                       >
                         <Check
                           className={cn(
                             "mr-2 h-4 w-4",
-                            formData.country_of_birth === country ? "opacity-100" : "opacity-0"
+                            value === country ? "opacity-100" : "opacity-0"
                           )}
                         />
                         {country}
