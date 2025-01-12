@@ -68,7 +68,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
   });
 
   const [openCountry, setOpenCountry] = useState(false);
-  const [value, setValue] = useState(member.country_of_birth || "");
+  const [selectedCountry, setSelectedCountry] = useState(member.country_of_birth || "");
 
   const handleSave = async () => {
     try {
@@ -101,7 +101,6 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
           <DialogTitle className="text-white text-xl">Edit Profile</DialogTitle>
         </DialogHeader>
         
-        <div className="grid gap-4 py-4">
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="email" className="text-right text-dashboard-text">
               Email
@@ -139,51 +138,51 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
             />
           </div>
 
-          <div className="grid grid-cols-4 items-center gap-4">
-            <Label htmlFor="country_of_birth" className="text-right text-dashboard-text">
-              Country of Birth
-            </Label>
-            <Popover open={openCountry} onOpenChange={setOpenCountry}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openCountry}
-                  className="col-span-3 justify-between bg-dashboard-dark text-white border-dashboard-accent1/20"
-                >
-                  {value || "Select country..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-[400px] p-0 bg-dashboard-dark text-white">
-                <Command>
-                  <CommandInput placeholder="Search country..." className="h-9 text-white" />
-                  <CommandEmpty>No country found.</CommandEmpty>
-                  <CommandGroup>
-                    {countries.map((country) => (
-                      <CommandItem
-                        key={country}
-                        value={country}
-                        onSelect={(currentValue) => {
-                          setValue(currentValue);
-                          setFormData({...formData, country_of_birth: currentValue});
-                          setOpenCountry(false);
-                        }}
-                      >
-                        <Check
-                          className={cn(
-                            "mr-2 h-4 w-4",
-                            value === country ? "opacity-100" : "opacity-0"
-                          )}
-                        />
-                        {country}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </Command>
-              </PopoverContent>
-            </Popover>
-          </div>
+        <div className="grid grid-cols-4 items-center gap-4">
+          <Label htmlFor="country_of_birth" className="text-right text-dashboard-text">
+            Country of Birth
+          </Label>
+          <Popover open={openCountry} onOpenChange={setOpenCountry}>
+            <PopoverTrigger asChild>
+              <Button
+                variant="outline"
+                role="combobox"
+                aria-expanded={openCountry}
+                className="col-span-3 justify-between bg-dashboard-dark text-white border-dashboard-accent1/20"
+              >
+                {selectedCountry || "Select country..."}
+                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[400px] p-0 bg-dashboard-dark text-white">
+              <Command>
+                <CommandInput placeholder="Search country..." />
+                <CommandEmpty>No country found.</CommandEmpty>
+                <CommandGroup>
+                  {countries.map((country) => (
+                    <CommandItem
+                      key={country}
+                      value={country}
+                      onSelect={(currentValue) => {
+                        setSelectedCountry(currentValue);
+                        setFormData({ ...formData, country_of_birth: currentValue });
+                        setOpenCountry(false);
+                      }}
+                    >
+                      <Check
+                        className={cn(
+                          "mr-2 h-4 w-4",
+                          selectedCountry === country ? "opacity-100" : "opacity-0"
+                        )}
+                      />
+                      {country}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              </Command>
+            </PopoverContent>
+          </Popover>
+        </div>
 
           <div className="grid grid-cols-4 items-center gap-4">
             <Label htmlFor="address" className="text-right text-dashboard-text">
