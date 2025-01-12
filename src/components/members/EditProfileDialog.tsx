@@ -24,7 +24,9 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
     postcode: member.postcode || '',
     membership_type: member.membership_type || '',
     status: member.status || '',
-    collector: member.collector || ''
+    collector: member.collector || '',
+    date_of_birth: member.date_of_birth || '',
+    country_of_birth: member.country_of_birth || ''
   });
 
   const handleSave = async () => {
@@ -79,6 +81,31 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
               id="phone"
               value={formData.phone}
               onChange={(e) => setFormData({...formData, phone: e.target.value})}
+              className="col-span-3 bg-dashboard-dark text-white border-dashboard-accent1/20"
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="date_of_birth" className="text-right text-dashboard-text">
+              Date of Birth
+            </Label>
+            <Input
+              id="date_of_birth"
+              type="date"
+              value={formData.date_of_birth}
+              onChange={(e) => setFormData({...formData, date_of_birth: e.target.value})}
+              className="col-span-3 bg-dashboard-dark text-white border-dashboard-accent1/20"
+            />
+          </div>
+
+          <div className="grid grid-cols-4 items-center gap-4">
+            <Label htmlFor="country_of_birth" className="text-right text-dashboard-text">
+              Country of Birth
+            </Label>
+            <Input
+              id="country_of_birth"
+              value={formData.country_of_birth}
+              onChange={(e) => setFormData({...formData, country_of_birth: e.target.value})}
               className="col-span-3 bg-dashboard-dark text-white border-dashboard-accent1/20"
             />
           </div>
