@@ -68,7 +68,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
   });
 
   const [openCountry, setOpenCountry] = useState(false);
-  const [selectedCountry, setSelectedCountry] = useState(member.country_of_birth || "");
+  const [value, setValue] = useState(member.country_of_birth || "");
 
   const handleSave = async () => {
     try {
@@ -151,12 +151,12 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                   aria-expanded={openCountry}
                   className="col-span-3 justify-between bg-dashboard-dark text-white border-dashboard-accent1/20"
                 >
-                  {selectedCountry || "Select country..."}
+                  {value || "Select country..."}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-[400px] p-0 bg-dashboard-dark text-white">
-                <Command>
+                <Command value={value} onValueChange={setValue}>
                   <CommandInput placeholder="Search country..." />
                   <CommandEmpty>No country found.</CommandEmpty>
                   <CommandGroup>
@@ -165,7 +165,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                         key={country}
                         value={country}
                         onSelect={(currentValue) => {
-                          setSelectedCountry(currentValue);
+                          setValue(currentValue);
                           setFormData({ ...formData, country_of_birth: currentValue });
                           setOpenCountry(false);
                         }}
@@ -173,7 +173,7 @@ const EditProfileDialog = ({ member, open, onOpenChange, onProfileUpdated }: Edi
                         <Check
                           className={cn(
                             "mr-2 h-4 w-4",
-                            selectedCountry === country ? "opacity-100" : "opacity-0"
+                            value === country ? "opacity-100" : "opacity-0"
                           )}
                         />
                         {country}
