@@ -12,29 +12,33 @@ const CollectorRolesList = () => {
   const { data: collectors, isLoading } = useQuery({
     queryKey: ['collectors-roles'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('members')
-        .select(`
-          full_name,
-          member_number,
-          auth_user_id,
-          members_collectors!inner(active)
-        `)
-        .eq('members_collectors.active', true);
+      // First get active collectors
+      const { data: activeCollectors, error: collectorsError } = await supabase
+        .from('members_collectors')
+        .select('member_number, name')
+        .eq('active', true);
 
-      if (error) throw error;
+      if (collectorsError) throw collectorsError;
 
-      // Fetch roles for each collector
+      // Then get member details and roles for each collector
       const collectorsWithRoles = await Promise.all(
-        data.map(async (collector) => {
+        activeCollectors.map(async (collector) => {
+          const { data: memberData, error: memberError } = await supabase
+            .from('members')
+            .select('full_name, member_number, auth_user_id')
+            .eq('member_number', collector.member_number)
+            .single();
+
+          if (memberError) throw memberError;
+
           const { data: roles } = await supabase
             .from('user_roles')
             .select('role')
-            .eq('user_id', collector.auth_user_id);
+            .eq('user_id', memberData.auth_user_id);
 
           return {
-            full_name: collector.full_name,
-            member_number: collector.member_number,
+            full_name: memberData.full_name,
+            member_number: memberData.member_number,
             roles: roles?.map(r => r.role) || []
           };
         })

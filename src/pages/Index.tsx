@@ -8,12 +8,13 @@ import CollectorFinancialsView from '@/components/CollectorFinancialsView';
 import { useRoleAccess } from '@/hooks/useRoleAccess';
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from '@/components/layout/MainLayout';
-import { InvalidateRolesButton } from '@/components/debug/InvalidateRolesButton';
+import InvalidateRolesButton from '@/components/debug/InvalidateRolesButton';
 
 const Index = () => {
   const navigate = useNavigate();
   const { userRole, canAccessTab } = useRoleAccess();
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     if (!canAccessTab(activeTab)) {
@@ -35,7 +36,7 @@ const Index = () => {
           </>
         );
       case 'users':
-        return <MemberSearch />;
+        return <MemberSearch onSearchChange={setSearchTerm} searchTerm={searchTerm} />;
       case 'financials':
         return <CollectorFinancialsView />;
       case 'system':
