@@ -213,7 +213,7 @@ const CollectorRolesList = () => {
                         <span className="text-dashboard-muted">Current Role:</span>
                         <Badge variant="outline">{userRole}</Badge>
                         <span className="text-dashboard-muted">Loading:</span>
-                        <Badge variant={roleLoading ? "destructive" : "success"}>
+                        <Badge variant={roleLoading ? "destructive" : "secondary"}>
                           {roleLoading ? "Loading" : "Ready"}
                         </Badge>
                         <span className="text-dashboard-muted">Permissions:</span>
@@ -221,7 +221,7 @@ const CollectorRolesList = () => {
                           {Object.entries(permissions).map(([key, value]) => (
                             <Badge 
                               key={key}
-                              variant={value ? "success" : "secondary"}
+                              variant={value ? "secondary" : "outline"}
                               className="mr-1"
                             >
                               {key}
@@ -245,7 +245,7 @@ const CollectorRolesList = () => {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <span className="text-dashboard-muted">Query Status:</span>
-                        <Badge variant={enhancedLoading ? "destructive" : "success"}>
+                        <Badge variant={enhancedLoading ? "destructive" : "secondary"}>
                           {enhancedLoading ? "Loading" : "Ready"}
                         </Badge>
                         <span className="text-dashboard-muted">Enhanced Roles:</span>
@@ -277,7 +277,7 @@ const CollectorRolesList = () => {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <span className="text-dashboard-muted">Sync Status:</span>
-                        <Badge variant={syncStatus ? "success" : "secondary"}>
+                        <Badge variant={syncStatus ? "secondary" : "outline"}>
                           {syncStatus ? "Synced" : "Pending"}
                         </Badge>
                       </div>
@@ -297,11 +297,11 @@ const CollectorRolesList = () => {
                     <div className="space-y-2">
                       <div className="grid grid-cols-2 gap-2 text-sm">
                         <span className="text-dashboard-muted">Store Status:</span>
-                        <Badge variant={roleStore.isLoading ? "destructive" : "success"}>
+                        <Badge variant={roleStore.isLoading ? "destructive" : "secondary"}>
                           {roleStore.isLoading ? "Loading" : "Ready"}
                         </Badge>
                         <span className="text-dashboard-muted">Store Error:</span>
-                        <Badge variant={roleStore.error ? "destructive" : "success"}>
+                        <Badge variant={roleStore.error ? "destructive" : "secondary"}>
                           {roleStore.error ? "Error" : "None"}
                         </Badge>
                       </div>
