@@ -6,6 +6,7 @@ import MembersList from '@/components/MembersList';
 import MemberSearch from '@/components/MemberSearch';
 import SystemToolsView from '@/components/SystemToolsView';
 import CollectorFinancialsView from '@/components/CollectorFinancialsView';
+import CollectorRolesList from '@/components/CollectorRolesList';
 import { useRoleAccess } from '@/hooks/useRoleAccess';
 import { useToast } from "@/hooks/use-toast";
 import MainLayout from '@/components/layout/MainLayout';
@@ -108,7 +109,7 @@ const Index = () => {
         return (
           <>
             <DashboardView />
-            {/* Debug button - only show in development */}
+            <CollectorRolesList />
             {process.env.NODE_ENV === 'development' && (
               <div className="mt-8 max-w-md mx-auto">
                 <InvalidateRolesButton />
