@@ -5,12 +5,12 @@ import { format } from 'date-fns';
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { useToast } from "@/hooks/use-toast";
 
 interface CollectorInfo {
   full_name: string;
   member_number: string;
   roles: string[];
-  last_login?: string;
   auth_user_id: string;
   role_details: {
     role: string;
@@ -19,84 +19,104 @@ interface CollectorInfo {
 }
 
 const CollectorRolesList = () => {
-  const { data: collectors, isLoading } = useQuery({
+  const { toast } = useToast();
+  const { data: collectors, isLoading, error } = useQuery({
     queryKey: ['collectors-roles'],
     queryFn: async () => {
       console.log('Fetching collectors and roles data...');
       
-      // First get active collectors
-      const { data: activeCollectors, error: collectorsError } = await supabase
-        .from('members_collectors')
-        .select('member_number, name')
-        .eq('active', true);
+      try {
+        // First get active collectors
+        const { data: activeCollectors, error: collectorsError } = await supabase
+          .from('members_collectors')
+          .select('member_number, name')
+          .eq('active', true);
 
-      if (collectorsError) {
-        console.error('Error fetching collectors:', collectorsError);
-        throw collectorsError;
+        if (collectorsError) {
+          console.error('Error fetching collectors:', collectorsError);
+          throw collectorsError;
+        }
+
+        console.log('Active collectors:', activeCollectors);
+
+        // Then get member details and roles for each collector
+        const collectorsWithRoles = await Promise.all(
+          activeCollectors.map(async (collector) => {
+            try {
+              // Get member data
+              const { data: memberData, error: memberError } = await supabase
+                .from('members')
+                .select('full_name, member_number, auth_user_id')
+                .eq('member_number', collector.member_number)
+                .single();
+
+              if (memberError) {
+                console.error('Error fetching member data:', memberError);
+                throw memberError;
+              }
+
+              console.log('Member data:', memberData);
+
+              // Get user roles with creation timestamp
+              const { data: roles, error: rolesError } = await supabase
+                .from('user_roles')
+                .select('role, created_at')
+                .eq('user_id', memberData.auth_user_id)
+                .order('created_at', { ascending: true });
+
+              if (rolesError) {
+                console.error('Error fetching roles:', rolesError);
+                throw rolesError;
+              }
+
+              console.log('User roles:', roles);
+
+              return {
+                full_name: memberData.full_name,
+                member_number: memberData.member_number,
+                auth_user_id: memberData.auth_user_id,
+                roles: roles?.map(r => r.role) || [],
+                role_details: roles?.map(r => ({
+                  role: r.role,
+                  created_at: r.created_at
+                })) || []
+              };
+            } catch (err) {
+              console.error('Error processing collector:', collector.member_number, err);
+              toast({
+                title: "Error loading collector data",
+                description: `Could not load data for collector ${collector.member_number}`,
+                variant: "destructive",
+              });
+              return null;
+            }
+          })
+        );
+
+        // Filter out any null results from errors
+        const validCollectors = collectorsWithRoles.filter(c => c !== null);
+        console.log('Final collectors data:', validCollectors);
+        return validCollectors;
+      } catch (err) {
+        console.error('Error in collector roles query:', err);
+        toast({
+          title: "Error loading collectors",
+          description: "There was a problem loading the collectors list",
+          variant: "destructive",
+        });
+        throw err;
       }
-
-      console.log('Active collectors:', activeCollectors);
-
-      // Then get member details and roles for each collector
-      const collectorsWithRoles = await Promise.all(
-        activeCollectors.map(async (collector) => {
-          // Get member data
-          const { data: memberData, error: memberError } = await supabase
-            .from('members')
-            .select('full_name, member_number, auth_user_id')
-            .eq('member_number', collector.member_number)
-            .single();
-
-          if (memberError) {
-            console.error('Error fetching member data:', memberError);
-            throw memberError;
-          }
-
-          console.log('Member data:', memberData);
-
-          // Get user roles with creation timestamp
-          const { data: roles, error: rolesError } = await supabase
-            .from('user_roles')
-            .select('role, created_at')
-            .eq('user_id', memberData.auth_user_id)
-            .order('created_at', { ascending: true });
-
-          if (rolesError) {
-            console.error('Error fetching roles:', rolesError);
-            throw rolesError;
-          }
-
-          console.log('User roles:', roles);
-
-          // Get last login from auth.users
-          const { data: authData, error: authError } = await supabase.auth.admin.getUserById(
-            memberData.auth_user_id
-          );
-
-          if (authError) {
-            console.error('Error fetching auth data:', authError);
-          }
-
-          console.log('Auth data:', authData);
-
-          return {
-            full_name: memberData.full_name,
-            member_number: memberData.member_number,
-            auth_user_id: memberData.auth_user_id,
-            roles: roles?.map(r => r.role) || [],
-            role_details: roles?.map(r => ({
-              role: r.role,
-              created_at: r.created_at
-            })) || [],
-            last_login: authData?.user?.last_sign_in_at
-          };
-        })
-      );
-
-      console.log('Final collectors data:', collectorsWithRoles);
-      return collectorsWithRoles;
     }
   });
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center p-4 text-red-500">
+        <AlertCircle className="w-4 h-4 mr-2" />
+        <span>Error loading collectors</span>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -157,18 +177,6 @@ const CollectorRolesList = () => {
                     </div>
                   ))}
                 </div>
-              </div>
-
-              <Separator className="bg-dashboard-cardBorder" />
-
-              {/* Last Login Section */}
-              <div className="flex items-center gap-2 text-sm text-dashboard-muted">
-                <Clock className="h-4 w-4" />
-                <span>
-                  Last login: {collector.last_login 
-                    ? format(new Date(collector.last_login), 'PPpp')
-                    : 'Never logged in'}
-                </span>
               </div>
             </div>
           </Card>
