@@ -10,7 +10,7 @@ type UserRole = Database['public']['Enums']['app_role'];
 
 interface CollectorTableRowProps {
   collector: Collector;
-  onRoleUpdate: (collector: Collector & { roles: UserRole[] }, role: 'collector', action: 'add' | 'remove') => void;
+  onRoleUpdate: (collector: Collector, role: 'collector', action: 'add' | 'remove') => void;
   onEnhancedRoleUpdate: (collector: Collector, roleName: string, isActive: boolean) => void;
   onSync: () => void;
   isSyncing: boolean;
@@ -59,7 +59,7 @@ const CollectorTableRow = ({
       <td className="px-6 py-4 whitespace-nowrap">
         <div className="flex items-center space-x-2">
           <Badge 
-            variant={collector.syncStatus?.status === 'success' ? 'secondary' : 'outline'}
+            variant={collector.syncStatus?.status === 'completed' ? 'secondary' : 'outline'}
             className="text-xs"
           >
             {collector.syncStatus?.status || 'Not synced'}

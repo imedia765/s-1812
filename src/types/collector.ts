@@ -11,4 +11,15 @@ export interface Collector {
   member_number: string | null;
   auth_user_id?: string | null;
   memberCount?: number;
+  roles: ("collector" | "admin" | "member")[];
+  enhanced_roles: {
+    role_name: string;
+    is_active: boolean;
+  }[];
+  syncStatus?: {
+    status: string;
+    store_status?: string;
+    last_attempted_sync_at?: string;
+    store_error?: string | null;
+  };
 }
