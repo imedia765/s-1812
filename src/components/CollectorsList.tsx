@@ -77,20 +77,17 @@ const CollectorsList = () => {
           .select('*', { count: 'exact', head: true })
           .eq('collector', collector.name);
 
-        // Fetch user roles for this collector
         const { data: memberData } = await supabase
           .from('members')
           .select('auth_user_id')
           .eq('member_number', collector.member_number)
           .single();
 
-        // Fetch enhanced roles
         const { data: enhancedRoles } = await supabase
           .from('enhanced_roles')
           .select('*')
           .eq('user_id', memberData?.auth_user_id);
 
-        // Fetch sync status
         const { data: syncStatus } = await supabase
           .from('sync_status')
           .select('*')
@@ -110,7 +107,10 @@ const CollectorsList = () => {
           ...collector,
           memberCount: count || 0,
           roles,
-          enhancedRoles: enhancedRoles || [],
+          enhanced_roles: enhancedRoles?.map(role => ({
+            role_name: role.role_name,
+            is_active: role.is_active || false
+          })) || [],
           syncStatus
         };
       }));
@@ -227,7 +227,7 @@ const CollectorsList = () => {
                 <td className="px-6 py-4 whitespace-nowrap">
                   <div className="flex items-center space-x-2">
                     <Badge 
-                      variant={collector.syncStatus?.status === 'success' ? 'success' : 'warning'}
+                      variant={collector.syncStatus?.status === 'success' ? 'secondary' : 'outline'}
                       className="text-xs"
                     >
                       {collector.syncStatus?.status || 'Not synced'}
