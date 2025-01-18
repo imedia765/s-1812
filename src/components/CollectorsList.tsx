@@ -161,6 +161,19 @@ const CollectorsList = () => {
     }
   };
 
+  const handleSync = async () => {
+    try {
+      await syncRolesMutation.mutateAsync();
+    } catch (error) {
+      console.error('Error syncing roles:', error);
+      toast({
+        title: "Error syncing roles",
+        description: error instanceof Error ? error.message : "An error occurred",
+        variant: "destructive",
+      });
+    }
+  };
+
   if (collectorsLoading) return <div className="text-center py-4">Loading collectors...</div>;
   if (collectorsError) return <div className="text-center py-4 text-red-500">Error loading collectors: {collectorsError.message}</div>;
   if (!collectors?.length) return <div className="text-center py-4">No collectors found</div>;
@@ -182,7 +195,7 @@ const CollectorsList = () => {
                 collector={collector}
                 onRoleUpdate={handleRoleUpdate}
                 onEnhancedRoleUpdate={handleEnhancedRoleUpdate}
-                onSync={() => syncRolesMutation.mutate()}
+                onSync={handleSync}
                 isSyncing={syncRolesMutation.isPending}
               />
             ))}
