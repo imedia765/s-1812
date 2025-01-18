@@ -1,15 +1,14 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Users } from 'lucide-react';
 import PrintButtons from "@/components/PrintButtons";
-import { useState } from 'react';
 import PaginationControls from './ui/pagination/PaginationControls';
 import { useCollectorSync } from '@/hooks/useCollectorSync';
 import { useCollectorRoles } from '@/hooks/useCollectorRoles';
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import CollectorTableHeader from './collectors/CollectorTableHeader';
-import CollectorTableRow from './collectors/CollectorTableRow';
+import CollectorsTable from './collectors/CollectorsTable';
+import { useCollectors } from './collectors/useCollectors';
 
 type UserRole = Database['public']['Enums']['app_role'];
 
@@ -34,92 +33,12 @@ const CollectorsList = () => {
     },
   });
 
-  const { data: paymentsData, isLoading: collectorsLoading, error: collectorsError } = useQuery({
-    queryKey: ['members_collectors', page],
-    queryFn: async () => {
-      console.log('Fetching collectors from members_collectors...');
-      const from = (page - 1) * ITEMS_PER_PAGE;
-      const to = from + ITEMS_PER_PAGE - 1;
-
-      const { data: collectorsData, error: collectorsError, count } = await supabase
-        .from('members_collectors')
-        .select(`
-          id,
-          name,
-          prefix,
-          number,
-          email,
-          phone,
-          active,
-          created_at,
-          updated_at,
-          member_number
-        `, { count: 'exact' })
-        .order('number', { ascending: true })
-        .range(from, to);
-      
-      if (collectorsError) {
-        console.error('Error fetching collectors:', collectorsError);
-        throw collectorsError;
-      }
-
-      if (!collectorsData) return { data: [], count: 0 };
-
-      const collectorsWithCounts = await Promise.all(collectorsData.map(async (collector) => {
-        const { count } = await supabase
-          .from('members')
-          .select('*', { count: 'exact', head: true })
-          .eq('collector', collector.name);
-
-        const { data: memberData } = await supabase
-          .from('members')
-          .select('auth_user_id')
-          .eq('member_number', collector.member_number)
-          .single();
-
-        const { data: enhancedRoles } = await supabase
-          .from('enhanced_roles')
-          .select('*')
-          .eq('user_id', memberData?.auth_user_id);
-
-        const { data: syncStatus } = await supabase
-          .from('sync_status')
-          .select('*')
-          .eq('user_id', memberData?.auth_user_id)
-          .single();
-
-        let roles: UserRole[] = [];
-        if (memberData?.auth_user_id) {
-          const { data: rolesData } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', memberData.auth_user_id);
-          roles = rolesData?.map(r => r.role as UserRole) || [];
-        }
-
-        return {
-          ...collector,
-          memberCount: count || 0,
-          roles,
-          enhanced_roles: enhancedRoles?.map(role => ({
-            role_name: role.role_name,
-            is_active: role.is_active || false
-          })) || [],
-          syncStatus
-        };
-      }));
-
-      return {
-        data: collectorsWithCounts,
-        count: count || 0
-      };
-    },
-  });
+  const { data: paymentsData, isLoading: collectorsLoading, error: collectorsError } = useCollectors(page, ITEMS_PER_PAGE);
 
   const collectors = paymentsData?.data || [];
   const totalPages = Math.ceil((paymentsData?.count || 0) / ITEMS_PER_PAGE);
 
-  const handleRoleUpdate = async (collector: any, role: 'collector', action: 'add' | 'remove') => {
+  const handleRoleUpdate = async (collector: any, role: UserRole, action: 'add' | 'remove') => {
     try {
       await updateRoleMutation.mutateAsync({ 
         userId: collector.member_number || '', 
@@ -164,6 +83,10 @@ const CollectorsList = () => {
   const handleSync = async () => {
     try {
       await syncRolesMutation.mutateAsync();
+      toast({
+        title: "Sync completed",
+        description: "Roles have been synchronized successfully",
+      });
     } catch (error) {
       console.error('Error syncing roles:', error);
       toast({
@@ -185,23 +108,13 @@ const CollectorsList = () => {
         <PrintButtons allMembers={allMembers} />
       </div>
 
-      <div className="bg-white rounded-lg shadow">
-        <table className="min-w-full divide-y divide-gray-200">
-          <CollectorTableHeader />
-          <tbody className="bg-white divide-y divide-gray-200">
-            {collectors.map((collector) => (
-              <CollectorTableRow
-                key={collector.id}
-                collector={collector}
-                onRoleUpdate={handleRoleUpdate}
-                onEnhancedRoleUpdate={handleEnhancedRoleUpdate}
-                onSync={handleSync}
-                isSyncing={syncRolesMutation.isPending}
-              />
-            ))}
-          </tbody>
-        </table>
-      </div>
+      <CollectorsTable
+        collectors={collectors}
+        onRoleUpdate={handleRoleUpdate}
+        onEnhancedRoleUpdate={handleEnhancedRoleUpdate}
+        onSync={handleSync}
+        isSyncing={syncRolesMutation.isPending}
+      />
 
       {totalPages > 1 && (
         <div className="py-4">
