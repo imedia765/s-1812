@@ -22,4 +22,11 @@ export interface Collector {
     last_attempted_sync_at?: string;
     store_error?: string | null;
   };
+  permissions?: {
+    canManageUsers: boolean;
+    canCollectPayments: boolean;
+    canAccessSystem: boolean;
+    canViewAudit: boolean;
+    canManageCollectors: boolean;
+  };
 }
