@@ -1,21 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Shield, Loader2 } from 'lucide-react';
-import { Accordion } from "@/components/ui/accordion";
-import { Button } from "@/components/ui/button";
+import { Users } from 'lucide-react';
 import PrintButtons from "@/components/PrintButtons";
 import { useState } from 'react';
 import PaginationControls from './ui/pagination/PaginationControls';
-import { Collector } from '@/types/collector';
-import CollectorAccordionItem from './collectors/CollectorAccordionItem';
 import { useCollectorSync } from '@/hooks/useCollectorSync';
 import { useCollectorRoles } from '@/hooks/useCollectorRoles';
-import RoleManagementDropdown from './collectors/RoleManagementDropdown';
-import EnhancedRoleSection from './collectors/roles/EnhancedRoleSection';
 import { Database } from "@/integrations/supabase/types";
 import { useToast } from "@/hooks/use-toast";
-import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
+import CollectorTableHeader from './collectors/CollectorTableHeader';
+import CollectorTableRow from './collectors/CollectorTableRow';
 
 type UserRole = Database['public']['Enums']['app_role'];
 
@@ -125,7 +119,7 @@ const CollectorsList = () => {
   const collectors = paymentsData?.data || [];
   const totalPages = Math.ceil((paymentsData?.count || 0) / ITEMS_PER_PAGE);
 
-  const handleRoleUpdate = async (collector: Collector & { roles: UserRole[] }, role: 'collector', action: 'add' | 'remove') => {
+  const handleRoleUpdate = async (collector: any, role: 'collector', action: 'add' | 'remove') => {
     try {
       await updateRoleMutation.mutateAsync({ 
         userId: collector.member_number || '', 
@@ -147,7 +141,7 @@ const CollectorsList = () => {
     }
   };
 
-  const handleEnhancedRoleUpdate = async (collector: Collector, roleName: string, isActive: boolean) => {
+  const handleEnhancedRoleUpdate = async (collector: any, roleName: string, isActive: boolean) => {
     try {
       await updateEnhancedRoleMutation.mutateAsync({
         userId: collector.member_number || '',
@@ -180,83 +174,17 @@ const CollectorsList = () => {
 
       <div className="bg-white rounded-lg shadow">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Collector</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Roles & Access</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Enhanced Roles</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sync Status</th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
-            </tr>
-          </thead>
+          <CollectorTableHeader />
           <tbody className="bg-white divide-y divide-gray-200">
             {collectors.map((collector) => (
-              <tr key={collector.id}>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center">
-                    <div className="ml-4">
-                      <div className="text-sm font-medium text-gray-900">{collector.name}</div>
-                      <div className="text-sm text-gray-500">{collector.member_number}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center space-x-2">
-                    <RoleManagementDropdown
-                      currentRoles={collector.roles}
-                      onRoleUpdate={(role, action) => handleRoleUpdate(collector, 'collector', action)}
-                      disabled={updateRoleMutation.isPending}
-                    />
-                    <div className="flex flex-col space-y-1">
-                      {collector.roles.map((role) => (
-                        <Badge key={role} variant="outline" className="text-xs">
-                          {role}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <EnhancedRoleSection
-                    collector={collector}
-                    onEnhancedRoleUpdate={(roleName, isActive) => 
-                      handleEnhancedRoleUpdate(collector, roleName, isActive)
-                    }
-                  />
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="flex items-center space-x-2">
-                    <Badge 
-                      variant={collector.syncStatus?.status === 'success' ? 'secondary' : 'outline'}
-                      className="text-xs"
-                    >
-                      {collector.syncStatus?.status || 'Not synced'}
-                    </Badge>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      onClick={() => syncRolesMutation.mutate()}
-                      disabled={syncRolesMutation.isPending}
-                    >
-                      {syncRolesMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        'Sync'
-                      )}
-                    </Button>
-                  </div>
-                </td>
-                <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-indigo-600 hover:text-indigo-900"
-                    onClick={() => {/* Add view details handler */}}
-                  >
-                    View Details
-                  </Button>
-                </td>
-              </tr>
+              <CollectorTableRow
+                key={collector.id}
+                collector={collector}
+                onRoleUpdate={handleRoleUpdate}
+                onEnhancedRoleUpdate={handleEnhancedRoleUpdate}
+                onSync={() => syncRolesMutation.mutate()}
+                isSyncing={syncRolesMutation.isPending}
+              />
             ))}
           </tbody>
         </table>
